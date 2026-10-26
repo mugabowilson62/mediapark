@@ -1,34 +1,56 @@
 # Mediapark
 
-Mediapark is an all-in-one creative and entertainment platform concept.
+Mediapark is an all-in-one creative and entertainment platform concept, built with **React, TypeScript and Vite**.
 
-## Current status
+## Frontend status
 
-The repository now contains a responsive landing-page prototype in `index.html`. It introduces the visual direction and planned product areas:
+The first responsive React frontend is in place. It includes:
 
-- AI music generation
-- Audio recording and editing
-- Video and image editing
-- Online games
-- Live news and video streaming
-- Video, audio and news discovery feeds
-- Messaging, audio calls and video calls
+- A creator-focused home dashboard and navigation
+- A visual hero for the creative studio
+- Cards for AI music, audio recording/editing, video editing, image editing, games, and live news
+- A discovery feed preview for video, audio and news posts
+- Trending topics and a live-news preview panel
+- Responsive layouts for desktop, tablet and mobile
+- Interactive frontend states for search, likes, navigation and feature notices
+
+The first page is a **frontend prototype**. The buttons and cards are visual interactions; they do not yet connect to AI generation, media processing, live broadcasts, game services, accounts, messaging or calling.
 
 ## Run locally
 
-Open `index.html` in a modern browser. No build step is required for this first static prototype.
+Install a recent version of Node.js, then run:
 
-## Important
+```bash
+npm install
+npm run dev
+```
 
-The current page is a front-end prototype. The cards and buttons explain planned features; they do not yet connect to AI providers, media processing, live streams, games, user accounts, messaging, or calling services.
+Open the local URL printed by Vite in your terminal.
 
-## Suggested next steps
+To create a production build:
 
-1. Choose a front-end framework and project structure.
-2. Build authentication and user profiles.
-3. Add the creator tools and connect approved media/AI services.
-4. Implement content uploads, feeds, moderation and storage.
-5. Add real-time messaging and calling.
-6. Add tests, deployment and security controls.
+```bash
+npm run build
+```
+
+## Project structure
+
+- `src/App.tsx` — React components and page interactions
+- `src/index.css` — responsive styles and visual design
+- `src/main.tsx` — React entry point
+- `index.html` — minimal Vite entry shell
+- `vite.config.ts` — Vite configuration
+
+The interface is built with React components rather than writing the page layout as a large plain HTML document. Vite still requires a minimal HTML shell to mount the React application.
+
+## Roadmap
+
+1. Refine the frontend and page navigation.
+2. Add authentication and creator profiles.
+3. Build upload and content-feed workflows.
+4. Integrate approved AI music and media-processing services.
+5. Add secure media storage, moderation and search.
+6. Add realtime messaging, audio/video calling and live streaming.
+7. Add tests, deployment and security controls.
 
 Keep API keys and other secrets on the server in environment variables. Never commit secrets to this repository.
