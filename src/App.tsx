@@ -1,0 +1,145 @@
+import { useState } from "react";
+import {
+  AudioLines, Bell, ChevronDown, ChevronRight, Compass, Gamepad2,
+  Headphones, Image, Menu, MessageCircle, Mic2, MonitorPlay, Music2,
+  Newspaper, Plus, Search, Settings2, Sparkles, TrendingUp, Upload,
+  Video, WandSparkles, X, Play, Radio, Heart, Bookmark, Send,
+} from "lucide-react";
+
+type Feature = {
+  title: string;
+  description: string;
+  icon: typeof Music2;
+  label: string;
+  tone: string;
+};
+
+const features: Feature[] = [
+  { title: "AI Music Studio", description: "Turn a simple idea into your next sound.", icon: WandSparkles, label: "CREATE", tone: "violet" },
+  { title: "Audio workshop", description: "Record vocals, layer tracks and polish audio.", icon: AudioLines, label: "RECORD", tone: "pink" },
+  { title: "Video editor", description: "Build stories from clips, scenes and moments.", icon: Video, label: "EDIT", tone: "blue" },
+  { title: "Image lab", description: "Design covers, posters and standout visuals.", icon: Image, label: "DESIGN", tone: "orange" },
+  { title: "Game zone", description: "Take a break and discover something fun.", icon: Gamepad2, label: "PLAY", tone: "green" },
+  { title: "Live & news", description: "Catch headlines, streams and what's happening.", icon: Radio, label: "WATCH", tone: "cyan" },
+];
+
+const feedItems = [
+  { name: "Nia Creates", handle: "@niacreates", time: "12 min ago", title: "A little sunset, a little sound 🌅", kind: "VIDEO", icon: Video, tone: "feed-art-one", likes: "2.4k" },
+  { name: "Kivu Sound", handle: "@kivusound", time: "38 min ago", title: "New beat idea — late night in Kigali", kind: "AUDIO", icon: Headphones, tone: "feed-art-two", likes: "986" },
+  { name: "World Brief", handle: "@worldbrief", time: "1 hr ago", title: "The stories people are talking about today", kind: "NEWS", icon: Newspaper, tone: "feed-art-three", likes: "1.2k" },
+];
+
+function App() {
+  const [activeNav, setActiveNav] = useState("Home");
+  const [search, setSearch] = useState("");
+  const [notice, setNotice] = useState("");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [liked, setLiked] = useState<string[]>([]);
+
+  const showNotice = (name: string) => {
+    setNotice(name + " is part of the Mediapark plan. This is the first frontend preview; its service will be connected in a later step.");
+    window.setTimeout(() => setNotice(""), 4800);
+  };
+
+  const navGroups = [
+    { label: "EXPLORE", items: [
+      { name: "Home", icon: Compass }, { name: "Discover", icon: TrendingUp }, { name: "Videos", icon: MonitorPlay }, { name: "Music", icon: Headphones }, { name: "Live news", icon: Newspaper },
+    ]},
+    { label: "CREATE", items: [
+      { name: "AI music", icon: Sparkles }, { name: "Audio studio", icon: Mic2 }, { name: "Video studio", icon: Video }, { name: "Image lab", icon: Image },
+    ]},
+    { label: "YOUR SPACE", items: [
+      { name: "Messages", icon: MessageCircle }, { name: "Games", icon: Gamepad2 }, { name: "Settings", icon: Settings2 },
+    ]},
+  ];
+
+  const sidebar = (
+    <aside className="sidebar">
+      <a className="brand" href="#top" onClick={() => setActiveNav("Home")}>
+        <span className="brand-mark"><AudioLines size={22} strokeWidth={2.5} /></span>
+        <span>media<span className="brand-light">park</span><small>YOUR CREATIVE UNIVERSE</small></span>
+      </a>
+      <button className="create-button" onClick={() => showNotice("Create new project")}><Plus size={18} /> Create something <span>↗</span></button>
+      {navGroups.map((group) => (
+        <div className="nav-group" key={group.label}>
+          <div className="nav-label">{group.label}</div>
+          {group.items.map(({ name, icon: Icon }) => (
+            <button className={"nav-item " + (activeNav === name ? "active" : "")} key={name} onClick={() => { setActiveNav(name); setMobileOpen(false); if (name !== "Home") showNotice(name); }}>
+              <Icon size={18} strokeWidth={1.8} /><span>{name}</span>{name === "Messages" && <i className="unread-dot" />}
+            </button>
+          ))}
+        </div>
+      ))}
+      <div className="sidebar-bottom">
+        <div className="upgrade-card"><div className="upgrade-icon"><Sparkles size={17} /></div><strong>Your ideas, amplified.</strong><p>Your creative space is just getting started.</p><button onClick={() => showNotice("Creator account")}>Explore creator tools <ChevronRight size={15} /></button></div>
+        <button className="profile-row" onClick={() => showNotice("Profile and account")}><div className="avatar avatar-me">W</div><span><b>Wilson</b><small>Creator account</small></span><ChevronDown size={16} /></button>
+      </div>
+    </aside>
+  );
+
+  return (
+    <div className="app-shell" id="top">
+      {mobileOpen && <button className="mobile-scrim" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
+      {sidebar}
+      <main className="main-area">
+        <header className="topbar">
+          <button className="icon-button mobile-menu" aria-label="Open menu" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <X size={20} /> : <Menu size={20} />}</button>
+          <div className="breadcrumbs"><span>Workspace</span><ChevronRight size={14} /><b>{activeNav}</b></div>
+          <div className="top-actions">
+            <label className="search-box"><Search size={17} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Mediapark" /><kbd>⌘ K</kbd></label>
+            <button className="icon-button notification-button" aria-label="Notifications" onClick={() => showNotice("Notifications")}><Bell size={18} /><i /></button>
+            <button className="avatar avatar-top" aria-label="Open profile" onClick={() => showNotice("Profile")}>W</button>
+          </div>
+        </header>
+
+        <div className="page-content">
+          {notice && <div className="notice-banner" role="status"><Sparkles size={17} /><span>{notice}</span><button aria-label="Dismiss notice" onClick={() => setNotice("")}><X size={16} /></button></div>}
+          {search.trim() && <div className="search-result-note">Search preview for <b>“{search}”</b> — full search will be connected later.</div>}
+
+          <section className="welcome-row">
+            <div><div className="date-label"><span className="live-dot" /> YOUR WORLD, ALL IN ONE PLACE</div><h1>Make room for <span>your next big thing.</span></h1><p>Create something new, find your next favorite, or catch up with your world.</p></div>
+            <button className="secondary-button welcome-action" onClick={() => showNotice("Quick create")}><Plus size={17} /> Quick create</button>
+          </section>
+
+          <section className="hero-panel">
+            <div className="hero-copy">
+              <div className="hero-pill"><Sparkles size={14} /> INTRODUCING YOUR CREATIVE SPACE</div>
+              <h2>Your imagination.<br /><span>No limits.</span></h2>
+              <p>From the first beat to the final frame, bring your ideas to life with tools made for curious minds.</p>
+              <div className="hero-actions"><button className="primary-button" onClick={() => showNotice("AI Music Studio")}><WandSparkles size={17} /> Start creating <ChevronRight size={17} /></button><button className="text-button" onClick={() => showNotice("Studio tour")}>Take a tour <Play size={14} fill="currentColor" /></button></div>
+              <div className="hero-foot"><span><span className="mini-avatar mini-one">N</span><span className="mini-avatar mini-two">K</span><span className="mini-avatar mini-three">A</span></span><small>Made for makers, listeners & storytellers</small></div>
+            </div>
+            <div className="hero-art" aria-label="Abstract audio waveform artwork">
+              <div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" /><div className="art-glow" />
+              <div className="art-label"><span className="equalizer"><i /><i /><i /><i /></span> MEDIAPARK STUDIO <span className="art-live">● READY</span></div>
+              <div className="art-disc"><div className="disc-core"><AudioLines size={42} /></div></div>
+              <div className="sound-wave">{Array.from({ length: 37 }, (_, i) => <i key={i} style={{ "--bar-height": (18 + Math.abs(Math.sin(i * 0.7) * Math.cos(i * 0.17)) * 76) + "px", "--bar-delay": (i * 0.035) + "s" } as React.CSSProperties} />)}</div>
+              <div className="floating-card floating-top"><span className="float-icon purple"><Music2 size={17} /></span><span><b>Find your sound</b><small>AI Music Studio</small></span><ChevronRight size={15} /></div>
+              <div className="floating-card floating-bottom"><span className="float-icon peach"><Video size={17} /></span><span><b>Tell your story</b><small>Creator tools</small></span><span className="float-play"><Play size={12} fill="currentColor" /></span></div>
+            </div>
+          </section>
+
+          <section className="section-block">
+            <div className="section-heading"><div><div className="overline">YOUR TOOLKIT</div><h2>What are we making today?</h2><p>A whole creative universe, one place to start.</p></div><button className="subtle-link" onClick={() => showNotice("All tools")}>Explore all tools <ChevronRight size={16} /></button></div>
+            <div className="feature-grid">{features.map(({ title, description, icon: Icon, label, tone }) => <button className="feature-card" key={title} onClick={() => showNotice(title)}><div className="feature-card-top"><span className={"feature-icon " + tone}><Icon size={21} /></span><span className={"feature-label " + tone}>{label}</span></div><h3>{title}</h3><p>{description}</p><span className="feature-link">Open workspace <ChevronRight size={15} /></span></button>)}</div>
+          </section>
+
+          <section className="section-block discover-section">
+            <div className="section-heading"><div><div className="overline">THE COMMUNITY</div><h2>There's a world to discover.</h2><p>Fresh videos, new sounds and stories worth your time.</p></div><button className="subtle-link" onClick={() => setActiveNav("Discover")}>Open discover feed <ChevronRight size={16} /></button></div>
+            <div className="discover-layout">
+              <div className="feed-list">{feedItems.filter((item) => !search.trim() || (item.title + item.name + item.kind).toLowerCase().includes(search.toLowerCase())).map((item) => { const Icon = item.icon; const isLiked = liked.includes(item.name); return <article className="feed-card" key={item.name}><div className={"feed-art " + item.tone}><span className="feed-kind"><Icon size={13} /> {item.kind}</span><span className="feed-art-symbol">{item.kind === "VIDEO" ? <Play size={34} fill="currentColor" /> : item.kind === "AUDIO" ? <AudioLines size={46} /> : <Newspaper size={43} />}</span><span className="feed-art-caption">{item.kind === "VIDEO" ? "MOMENTS IN MOTION" : item.kind === "AUDIO" ? "SOUND OF THE CITY" : "THE DAILY EDIT"}</span></div><div className="feed-body"><div className="feed-author"><div className={"avatar " + (item.kind === "AUDIO" ? "avatar-kivu" : item.kind === "NEWS" ? "avatar-news" : "avatar-nia")}>{item.name.charAt(0)}</div><div><b>{item.name}</b><small>{item.handle} · {item.time}</small></div><button className="more-button" onClick={() => showNotice("More options")} aria-label="More options">•••</button></div><h3>{item.title}</h3><div className="feed-actions"><button className={isLiked ? "liked" : ""} onClick={() => setLiked((prev) => isLiked ? prev.filter((n) => n !== item.name) : [...prev, item.name])}><Heart size={16} fill={isLiked ? "currentColor" : "none"} /> {isLiked ? "Liked" : item.likes}</button><button onClick={() => showNotice("Comments")}><MessageCircle size={16} /> Comment</button><button onClick={() => showNotice("Save post")} aria-label="Save post"><Bookmark size={16} /></button><button onClick={() => showNotice("Share post")} aria-label="Share post"><Send size={15} /></button></div></div></article>; })}{search.trim() && feedItems.filter((item) => (item.title + item.name + item.kind).toLowerCase().includes(search.toLowerCase())).length === 0 && <div className="empty-state">No preview posts match “{search}”. Try another search.</div>}</div>
+              <aside className="right-column">
+                <div className="side-panel trending-panel"><div className="side-title"><h3><TrendingUp size={17} /> Trending now</h3><button onClick={() => showNotice("Trending topics")}>See all</button></div><button className="trend-row" onClick={() => showNotice("AI music trend")}><span className="trend-number">01</span><span><b>#AIMusic</b><small>Creativity meets technology</small></span><ChevronRight size={15} /></button><button className="trend-row" onClick={() => showNotice("Creator trend")}><span className="trend-number">02</span><span><b>#MadeInAfrica</b><small>Stories from the continent</small></span><ChevronRight size={15} /></button><button className="trend-row" onClick={() => showNotice("Short video trend")}><span className="trend-number">03</span><span><b>#ShortFilm</b><small>Big ideas in small frames</small></span><ChevronRight size={15} /></button></div>
+                <div className="side-panel live-panel"><div className="live-visual"><div className="live-rings"><Radio size={28} /></div><span className="live-badge"><i /> LIVE & NEWS</span></div><div className="live-copy"><h3>Stay in the know.</h3><p>Make space for live broadcasts, headlines and stories from around the world.</p><button className="primary-button small-button" onClick={() => showNotice("Live news")}>Explore live news <ChevronRight size={15} /></button></div></div>
+                <div className="tip-panel"><span className="tip-icon"><Sparkles size={17} /></span><div><b>Your next idea starts here</b><p>Pick a tool, try a new format, and make something that's yours.</p></div></div>
+              </aside>
+            </div>
+          </section>
+          <footer className="page-footer"><span>© 2026 Mediapark</span><span>Built for your creative universe <Sparkles size={13} /></span><button onClick={() => showNotice("Feedback")}>Send feedback</button></footer>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default App;
