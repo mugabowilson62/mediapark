@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0a12">
+  <meta name="description" content="Mediapark — create, watch, listen, play and connect in one place.">
+  <title>Mediapark — Your world, your media</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0a0a12;--panel:#13131f;--muted:#a5a5bb;--text:#f7f6ff;--purple:#a78bfa;--pink:#f472b6;--cyan:#67e8f9;--line:#29283a}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse at 75% 0%,#252047 0,transparent 38%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5}
+    a{color:inherit;text-decoration:none}button,input{font:inherit}.wrap{width:min(1160px,calc(100% - 40px));margin:auto}
+    header{position:sticky;top:0;z-index:5;background:#0a0a12d9;backdrop-filter:blur(18px);border-bottom:1px solid #ffffff12}.nav{height:76px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:850;font-size:1.35rem;letter-spacing:-.04em}.logo{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--purple),var(--pink));color:#100b1b;font-weight:950}
+    .navlinks{display:flex;gap:24px;color:var(--muted);font-size:.92rem}.navlinks a:hover{color:white}.nav-actions{display:flex;align-items:center;gap:12px}.pill{border:1px solid var(--line);border-radius:999px;padding:10px 16px;color:#fff;background:transparent;cursor:pointer}.primary{border:0;background:linear-gradient(100deg,var(--purple),var(--pink));color:#160d22;font-weight:800}
+    .hero{padding:82px 0 54px;display:grid;grid-template-columns:1.08fr .92fr;align-items:center;gap:54px}.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid #a78bfa44;background:#a78bfa12;color:#d7c8ff;border-radius:999px;font-size:.8rem;font-weight:750;letter-spacing:.04em}.dot{width:7px;height:7px;border-radius:50%;background:#86efac;box-shadow:0 0 12px #86efac}
+    h1{font-size:clamp(3.2rem,6.4vw,5.6rem);line-height:.99;letter-spacing:-.075em;margin:22px 0}.gradient{background:linear-gradient(100deg,#c4b5fd 5%,#f9a8d4 56%,#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent}.hero p{max-width:570px;color:var(--muted);font-size:1.12rem}.hero-buttons{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.hero-buttons a{padding:13px 19px;border-radius:12px;font-weight:800}.secondary{border:1px solid var(--line);background:#ffffff06}
+    .visual{min-height:390px;position:relative;border:1px solid #ffffff18;border-radius:28px;padding:22px;background:linear-gradient(145deg,#282144,#12121e 62%);overflow:hidden;box-shadow:0 30px 100px #0006}.orb{position:absolute;width:250px;height:250px;right:-35px;top:-55px;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#f472b6);filter:blur(2px);opacity:.82}.visual:after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,#0a0a12aa);pointer-events:none}.visual-head,.mini-grid,.player{position:relative;z-index:1}.visual-head{display:flex;justify-content:space-between;align-items:center;color:#ded9f5;font-size:.83rem}.wave{height:135px;display:flex;align-items:center;justify-content:center;gap:5px;margin:25px 0}.wave span{width:7px;border-radius:9px;background:linear-gradient(#c4b5fd,#f472b6);height:var(--h);opacity:.9;animation:pulse 1.2s ease-in-out infinite alternate;animation-delay:var(--d)}@keyframes pulse{to{transform:scaleY(.55);opacity:.65}}
+    .mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mini{background:#10101ccc;border:1px solid #ffffff18;border-radius:15px;padding:15px}.mini-icon{font-size:1.35rem}.mini b{display:block;margin-top:8px}.mini small{color:var(--muted)}.player{margin-top:12px;border-radius:14px;background:#ffffff0d;padding:12px 14px;display:flex;align-items:center;gap:12px;font-size:.84rem}.play{width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:#c4b5fd;color:#181125}.player small{color:var(--muted)}
+    .section{padding:50px 0 72px}.section-top{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:24px}.section h2{font-size:clamp(1.8rem,3vw,2.5rem);letter-spacing:-.05em;margin:0}.section-top p{margin:6px 0 0;color:var(--muted)}.text-link{color:#d7c8ff;font-weight:750}
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.feature{min-height:210px;padding:23px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(145deg,#171725,#101019);transition:transform .2s,border-color .2s}.feature:hover{transform:translateY(-4px);border-color:#a78bfa80}.feature-top{display:flex;justify-content:space-between;align-items:center}.feature-icon{width:48px;height:48px;display:grid;place-items:center;border-radius:15px;font-size:1.4rem;background:#a78bfa1b}.tag{font-size:.72rem;color:#d7c8ff;border:1px solid #a78bfa40;border-radius:999px;padding:5px 8px}.feature h3{margin:20px 0 6px;font-size:1.13rem}.feature p{margin:0;color:var(--muted);font-size:.93rem}.feature button{margin-top:16px;background:none;border:0;padding:0;color:#d7c8ff;font-weight:750;cursor:pointer}
+    .feed{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}.feed-main,.feed-side{border:1px solid var(--line);border-radius:22px;background:#13131f;padding:22px}.feed-main{min-height:220px;background:linear-gradient(120deg,#262047,#141321 70%)}.feed-main h3{font-size:1.5rem;margin:20px 0 6px}.feed-main p,.feed-side p{color:var(--muted);margin:0}.feed-side-item{display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}.feed-side-item:last-child{border:0}.thumb{width:56px;height:56px;flex-shrink:0;display:grid;place-items:center;border-radius:12px;background:linear-gradient(135deg,#31234c,#1c5260);font-size:1.4rem}.feed-side-item b{display:block}.feed-side-item small{color:var(--muted)}
+    .cta{margin:0 0 70px;border:1px solid #a78bfa45;border-radius:24px;padding:30px;background:linear-gradient(110deg,#251d3b,#171522);display:flex;justify-content:space-between;align-items:center;gap:20px}.cta h2{margin:0 0 7px;letter-spacing:-.04em}.cta p{color:var(--muted);margin:0}.cta button{white-space:nowrap}
+    footer{border-top:1px solid var(--line);padding:25px 0;color:var(--muted);font-size:.88rem}.foot{display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap}
+    .notice{display:none;margin-top:14px;padding:12px 14px;border:1px solid #a78bfa55;border-radius:12px;background:#a78bfa12;color:#e6ddff;font-size:.9rem}.notice.show{display:block}
+    @media(max-width:850px){.navlinks{display:none}.hero{grid-template-columns:1fr;padding-top:58px;gap:32px}.visual{min-height:350px}.cards{grid-template-columns:repeat(2,1fr)}.feed{grid-template-columns:1fr}.cta{align-items:flex-start;flex-direction:column}}
+    @media(max-width:560px){.wrap{width:min(100% - 28px,1160px)}.nav{height:66px}.nav-actions .pill{padding:8px 11px;font-size:.84rem}.hero{padding-top:42px}h1{font-size:3.25rem}.visual{padding:16px;min-height:330px}.wave{height:95px}.cards{grid-template-columns:1fr}.section{padding:36px 0 52px}.section-top{align-items:flex-start;flex-direction:column}.cta{padding:22px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap nav">
+      <a class="brand" href="#" aria-label="Mediapark home"><span class="logo">M</span> mediapark</a>
+      <nav class="navlinks" aria-label="Main navigation"><a href="#studio">Studio</a><a href="#discover">Discover</a><a href="#community">Community</a></nav>
+      <div class="nav-actions"><button class="pill" id="searchBtn" type="button">⌕ Search</button><a class="pill primary" href="#studio">Get started ↗</a></div>
+    </div>
+  </header>
+  <main>
+    <section class="wrap hero">
+      <div>
+        <span class="eyebrow"><span class="dot"></span> YOUR ALL-IN-ONE CREATIVE WORLD</span>
+        <h1>Create it.<br><span class="gradient">Play it.</span><br>Share it.</h1>
+        <p>One home for your creativity and entertainment. Make music with AI, edit videos, discover fresh content, follow the news, play games and connect with your people.</p>
+        <div class="hero-buttons"><a class="primary" href="#studio">Explore Mediapark ↗</a><a class="secondary" href="#discover">Discover content ↓</a></div>
+        <div class="notice" id="notice" role="status"></div>
+      </div>
+      <div class="visual" aria-label="Creative music studio preview">
+        <div class="orb"></div>
+        <div class="visual-head"><span>✦ MEDIAPARK STUDIO</span><span>● READY TO CREATE</span></div>
+        <div class="wave" aria-hidden="true"><span style="--h:18px;--d:0s"></span><span style="--h:71.45523476943207px;--d:0.08s"></span><span style="--h:105.01212794935758px;--d:0.16s"></span><span style="--h:106.17935804326011px;--d:0.24s"></span><span style="--h:74.52243171812549px;--d:0.32s"></span><span style="--h:21.825420943862724px;--d:0.4s"></span><span style="--h:68.29557633037439px;--d:0.48s"></span><span style="--h:103.69439302529831px;--d:0.56s"></span><span style="--h:107.1940643497504px;--d:0s"></span><span style="--h:77.49186184756888px;--d:0.08s"></span><span style="--h:25.644225059209667px;--d:0.16s"></span><span style="--h:65.04892166042762px;--d:0.24s"></span><span style="--h:102.2284325564602px;--d:0.32s"></span><span style="--h:108.05449173188475px;--d:0.4s"></span><span style="--h:80.35838893609039px;--d:0.48s"></span><span style="--h:29.449806962649678px;--d:0.56s"></span><span style="--h:61.72088649639974px;--d:0s"></span><span style="--h:100.61678221386501px;--d:0.08s"></span><span style="--h:108.75915190889056px;--d:0.16s"></span><span style="--h:83.11705475335167px;--d:0.24s"></span><span style="--h:33.235584141244466px;--d:0.32s"></span><span style="--h:58.31722733889509px;--d:0.4s"></span><span style="--h:98.86222966822949px;--d:0.48s"></span><span style="--h:109.3068260304448px;--d:0.56s"></span><span style="--h:85.76308763659637px;--d:0s"></span><span style="--h:36.99500833827729px;--d:0.08s"></span><span style="--h:54.84383149529823px;--d:0.16s"></span><span style="--h:96.96780976813264px;--d:0.24s"></span><span style="--h:109.6965667849187px;--d:0.32s"></span><span style="--h:88.29191074419248px;--d:0.4s"></span><span style="--h:40.72157687976912px;--d:0.48s"></span><span style="--h:51.306706896500984px;--d:0.56s"></span><span style="--h:94.93679929064058px;--d:0s"></span><span style="--h:109.92770003794232px;--d:0.08s"></span><span style="--h:90.69914997219323px;--d:0.16s"></span><span style="--h:44.40884392215102px;--d:0.24s"></span><span style="--h:47.71197170498924px;--d:0.32s"></span><span style="--h:92.77271127346602px;--d:0.4s"></span><span style="--h:109.99982599845423px;--d:0.48s"></span></div>
+        <div class="mini-grid">
+          <div class="mini"><span class="mini-icon">🎙️</span><b>AI Music Lab</b><small>Turn ideas into sound</small></div>
+          <div class="mini"><span class="mini-icon">🎬</span><b>Creator Studio</b><small>Make every frame count</small></div>
+        </div>
+        <div class="player"><span class="play">▶</span><span><b>Your next big idea</b><br><small>Imagine it · Create it · Share it</small></span><span style="margin-left:auto;color:#c4b5fd">♫</span></div>
+      </div>
+    </section>
+    <section class="wrap section" id="studio">
+      <div class="section-top"><div><h2>Everything starts here.</h2><p>Your tools, your entertainment, all under one roof.</p></div><a class="text-link" href="#community">Meet the community ↗</a></div>
+      <div class="cards">
+        <article class="feature"><div class="feature-top"><span class="feature-icon">🎵</span><span class="tag">AI CREATION</span></div><h3>AI Music Generator</h3><p>Imagine a sound, write a prompt and bring your musical ideas to life.</p><button data-feature="AI Music Generator">Explore studio ↗</button></article>
+        <article class="feature"><div class="feature-top"><span class="feature-icon">🎚️</span><span class="tag">AUDIO TOOLS</span></div><h3>Record &amp; Edit Audio</h3><p>Plan a recording workspace for voice, beats, tracks and audio edits.</p><button data-feature="Audio Recording & Editing">Explore studio ↗</button></article>
+        <article class="feature"><div class="feature-top"><span class="feature-icon">🎞️</span><span class="tag">VIDEO TOOLS</span></div><h3>Video Editor</h3><p>Shape clips, stories and short-form videos with a creator-friendly workflow.</p><button data-feature="Video Editor">Explore studio ↗</button></article>
+        <article class="feature"><div class="feature-top"><span class="feature-icon">🖼️</span><span class="tag">IMAGE TOOLS</span></div><h3>Image Editor</h3><p>Prepare a place for visual edits, thumbnails, posters and AI-assisted art.</p><button data-feature="Image Editor">Explore studio ↗</button></article>
+        <article class="feature"><div class="feature-top"><span class="feature-icon">🕹️</span><span class="tag">GAME ZONE</span></div><h3>Play Online</h3><p>Discover casual games and make room for friendly competition.</p><button data-feature="Online Games">Enter game zone ↗</button></article>
+        <article class="feature"><div class="feature-top"><span class="feature-icon">📡</span><span class="tag">LIVE &amp; SOCIAL</span></div><h3>News &amp; Live Video</h3><p>Bring together news updates, live streams and video discovery.</p><button data-feature="News & Live Video">See what's live ↗</button></article>
+      </div>
+    </section>
+    <section class="wrap section" id="discover">
+      <div class="section-top"><div><h2>Your next favorite thing.</h2><p>A discovery feed for the things you love.</p></div><span class="tag">PREVIEW EXPERIENCE</span></div>
+      <div class="feed">
+        <div class="feed-main"><span class="eyebrow">✦ DISCOVER FEED</span><h3>Fresh ideas. New voices. Big moments.</h3><p>Scroll through videos, listen to audio, catch up on news and find creators worth following.</p><div style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap"><span class="tag">▶ Short videos</span><span class="tag">♫ Audio</span><span class="tag">◉ News</span></div></div>
+        <div class="feed-side">
+          <div class="feed-side-item"><span class="thumb">🎧</span><span><b>Listen &amp; explore</b><small>Audio posts, tracks and podcasts</small></span></div>
+          <div class="feed-side-item"><span class="thumb">🌍</span><span><b>News around you</b><small>Stories and live updates</small></span></div>
+          <div class="feed-side-item"><span class="thumb">💬</span><span><b>Stay connected</b><small>Messages, audio and video calls</small></span></div>
+        </div>
+      </div>
+    </section>
+    <section class="wrap section" id="community">
+      <div class="cta"><div><h2>Make something worth sharing.</h2><p>Mediapark is just getting started. Your creative world begins here.</p></div><button class="pill primary" id="joinBtn" type="button">Join the journey ↗</button></div>
+    </section>
+  </main>
+  <footer><div class="wrap foot"><span>© <span id="year"></span> Mediapark. Made for creators and curious minds.</span><span>Built step by step ✦</span></div></footer>
+  <script>
+    const notice = document.getElementById('notice');
+    function announce(message){notice.textContent=message;notice.classList.add('show');notice.scrollIntoView({behavior:'smooth',block:'nearest'});}
+    document.querySelectorAll('[data-feature]').forEach(button=>button.addEventListener('click',()=>announce(button.dataset.feature+' is part of the Mediapark roadmap. This starter page is a visual prototype; the working tools and services still need to be connected.')));
+    document.getElementById('searchBtn').addEventListener('click',()=>announce('Search is planned for the Mediapark discovery feed. It is not connected yet.'));
+    document.getElementById('joinBtn').addEventListener('click',()=>announce('Thanks for being part of Mediapark! Accounts and sign-up will be added in a later step.'));
+    document.getElementById('year').textContent=new Date().getFullYear();
+  </script>
+</body>
+</html>
