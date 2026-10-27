@@ -35,6 +35,7 @@ function App() {
   const [notice, setNotice] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [liked, setLiked] = useState<string[]>([]);
+  const [saved, setSaved] = useState<string[]>([]);
 
   const showNotice = (name: string) => {
     setNotice(name + " is part of the Mediapark plan. This is the first frontend preview; its service will be connected in a later step.");
@@ -49,9 +50,26 @@ function App() {
       { name: "AI music", icon: Sparkles }, { name: "Audio studio", icon: Mic2 }, { name: "Video studio", icon: Video }, { name: "Image lab", icon: Image },
     ]},
     { label: "YOUR SPACE", items: [
-      { name: "Messages", icon: MessageCircle }, { name: "Games", icon: Gamepad2 }, { name: "Settings", icon: Settings2 },
+      { name: "Messages", icon: MessageCircle }, { name: "Saved", icon: Bookmark }, { name: "Games", icon: Gamepad2 }, { name: "Settings", icon: Settings2 },
     ]},
   ];
+
+  const visibleFeedItems = feedItems.filter((item) => {
+    const query = search.trim().toLowerCase();
+    const matchesSearch = !query || (item.title + " " + item.name + " " + item.handle + " " + item.kind).toLowerCase().includes(query);
+    const matchesSection =
+      activeNav === "Videos" ? item.kind === "VIDEO" :
+      activeNav === "Music" ? item.kind === "AUDIO" :
+      activeNav === "Live news" ? item.kind === "NEWS" :
+      activeNav === "Saved" ? saved.includes(item.name) :
+      true;
+    return matchesSearch && matchesSection;
+  });
+
+  const visibleFeatures = features.filter(({ title, description }) => {
+    const query = search.trim().toLowerCase();
+    return !query || (title + " " + description).toLowerCase().includes(query);
+  });
 
   const sidebar = (
     <aside className="sidebar">
@@ -64,7 +82,7 @@ function App() {
         <div className="nav-group" key={group.label}>
           <div className="nav-label">{group.label}</div>
           {group.items.map(({ name, icon: Icon }) => (
-            <button className={"nav-item " + (activeNav === name ? "active" : "")} key={name} onClick={() => { setActiveNav(name); setMobileOpen(false); if (name !== "Home") showNotice(name); }}>
+            <button className={"nav-item " + (activeNav === name ? "active" : "")} key={name} onClick={() => { setActiveNav(name); setMobileOpen(false); if (!["Home", "Discover", "Videos", "Music", "Live news", "Saved"].includes(name)) showNotice(name); }}>
               <Icon size={18} strokeWidth={1.8} /><span>{name}</span>{name === "Messages" && <i className="unread-dot" />}
             </button>
           ))}
@@ -121,13 +139,13 @@ function App() {
 
           <section className="section-block">
             <div className="section-heading"><div><div className="overline">YOUR TOOLKIT</div><h2>What are we making today?</h2><p>A whole creative universe, one place to start.</p></div><button className="subtle-link" onClick={() => showNotice("All tools")}>Explore all tools <ChevronRight size={16} /></button></div>
-            <div className="feature-grid">{features.map(({ title, description, icon: Icon, label, tone }) => <button className="feature-card" key={title} onClick={() => showNotice(title)}><div className="feature-card-top"><span className={"feature-icon " + tone}><Icon size={21} /></span><span className={"feature-label " + tone}>{label}</span></div><h3>{title}</h3><p>{description}</p><span className="feature-link">Open workspace <ChevronRight size={15} /></span></button>)}</div>
+            <div className="feature-grid">{visibleFeatures.map(({ title, description, icon: Icon, label, tone }) => <button className="feature-card" key={title} onClick={() => showNotice(title)}><div className="feature-card-top"><span className={"feature-icon " + tone}><Icon size={21} /></span><span className={"feature-label " + tone}>{label}</span></div><h3>{title}</h3><p>{description}</p><span className="feature-link">Open workspace <ChevronRight size={15} /></span></button>)}{visibleFeatures.length === 0 && <div className="empty-state">No tools match “{search}”. Try another search.</div>}</div>
           </section>
 
           <section className="section-block discover-section">
             <div className="section-heading"><div><div className="overline">THE COMMUNITY</div><h2>There's a world to discover.</h2><p>Fresh videos, new sounds and stories worth your time.</p></div><button className="subtle-link" onClick={() => setActiveNav("Discover")}>Open discover feed <ChevronRight size={16} /></button></div>
             <div className="discover-layout">
-              <div className="feed-list">{feedItems.filter((item) => !search.trim() || (item.title + item.name + item.kind).toLowerCase().includes(search.toLowerCase())).map((item) => { const Icon = item.icon; const isLiked = liked.includes(item.name); return <article className="feed-card" key={item.name}><div className={"feed-art " + item.tone}><span className="feed-kind"><Icon size={13} /> {item.kind}</span><span className="feed-art-symbol">{item.kind === "VIDEO" ? <Play size={34} fill="currentColor" /> : item.kind === "AUDIO" ? <AudioLines size={46} /> : <Newspaper size={43} />}</span><span className="feed-art-caption">{item.kind === "VIDEO" ? "MOMENTS IN MOTION" : item.kind === "AUDIO" ? "SOUND OF THE CITY" : "THE DAILY EDIT"}</span></div><div className="feed-body"><div className="feed-author"><div className={"avatar " + (item.kind === "AUDIO" ? "avatar-kivu" : item.kind === "NEWS" ? "avatar-news" : "avatar-nia")}>{item.name.charAt(0)}</div><div><b>{item.name}</b><small>{item.handle} · {item.time}</small></div><button className="more-button" onClick={() => showNotice("More options")} aria-label="More options">•••</button></div><h3>{item.title}</h3><div className="feed-actions"><button className={isLiked ? "liked" : ""} onClick={() => setLiked((prev) => isLiked ? prev.filter((n) => n !== item.name) : [...prev, item.name])}><Heart size={16} fill={isLiked ? "currentColor" : "none"} /> {isLiked ? "Liked" : item.likes}</button><button onClick={() => showNotice("Comments")}><MessageCircle size={16} /> Comment</button><button onClick={() => showNotice("Save post")} aria-label="Save post"><Bookmark size={16} /></button><button onClick={() => showNotice("Share post")} aria-label="Share post"><Send size={15} /></button></div></div></article>; })}{search.trim() && feedItems.filter((item) => (item.title + item.name + item.kind).toLowerCase().includes(search.toLowerCase())).length === 0 && <div className="empty-state">No preview posts match “{search}”. Try another search.</div>}</div>
+              <div className="feed-list">{visibleFeedItems.map((item) => { const Icon = item.icon; const isLiked = liked.includes(item.name); return <article className="feed-card" key={item.name}><div className={"feed-art " + item.tone}><span className="feed-kind"><Icon size={13} /> {item.kind}</span><span className="feed-art-symbol">{item.kind === "VIDEO" ? <Play size={34} fill="currentColor" /> : item.kind === "AUDIO" ? <AudioLines size={46} /> : <Newspaper size={43} />}</span><span className="feed-art-caption">{item.kind === "VIDEO" ? "MOMENTS IN MOTION" : item.kind === "AUDIO" ? "SOUND OF THE CITY" : "THE DAILY EDIT"}</span></div><div className="feed-body"><div className="feed-author"><div className={"avatar " + (item.kind === "AUDIO" ? "avatar-kivu" : item.kind === "NEWS" ? "avatar-news" : "avatar-nia")}>{item.name.charAt(0)}</div><div><b>{item.name}</b><small>{item.handle} · {item.time}</small></div><button className="more-button" onClick={() => showNotice("More options")} aria-label="More options">•••</button></div><h3>{item.title}</h3><div className="feed-actions"><button className={isLiked ? "liked" : ""} onClick={() => setLiked((prev) => isLiked ? prev.filter((n) => n !== item.name) : [...prev, item.name])}><Heart size={16} fill={isLiked ? "currentColor" : "none"} /> {isLiked ? "Liked" : item.likes}</button><button onClick={() => showNotice("Comments")}><MessageCircle size={16} /> Comment</button><button className={saved.includes(item.name) ? "saved" : ""} onClick={() => setSaved((prev) => saved.includes(item.name) ? prev.filter((n) => n !== item.name) : [...prev, item.name])} aria-label={saved.includes(item.name) ? "Remove saved post" : "Save post"} title={saved.includes(item.name) ? "Saved" : "Save post"}><Bookmark size={16} fill={saved.includes(item.name) ? "currentColor" : "none"} /></button><button onClick={() => showNotice("Share post")} aria-label="Share post"><Send size={15} /></button></div></div></article>; })}{(search.trim() || activeNav === "Videos" || activeNav === "Music" || activeNav === "Live news" || activeNav === "Saved") && visibleFeedItems.length === 0 && <div className="empty-state">{activeNav === "Saved" ? "You have not saved any posts yet." : `No ${activeNav === "Home" || activeNav === "Discover" ? "preview posts" : activeNav.toLowerCase() + " posts"} match this view. Try another search.`}</div>}</div>
               <aside className="right-column">
                 <div className="side-panel trending-panel"><div className="side-title"><h3><TrendingUp size={17} /> Trending now</h3><button onClick={() => showNotice("Trending topics")}>See all</button></div><button className="trend-row" onClick={() => showNotice("AI music trend")}><span className="trend-number">01</span><span><b>#AIMusic</b><small>Creativity meets technology</small></span><ChevronRight size={15} /></button><button className="trend-row" onClick={() => showNotice("Creator trend")}><span className="trend-number">02</span><span><b>#MadeInAfrica</b><small>Stories from the continent</small></span><ChevronRight size={15} /></button><button className="trend-row" onClick={() => showNotice("Short video trend")}><span className="trend-number">03</span><span><b>#ShortFilm</b><small>Big ideas in small frames</small></span><ChevronRight size={15} /></button></div>
                 <div className="side-panel live-panel"><div className="live-visual"><div className="live-rings"><Radio size={28} /></div><span className="live-badge"><i /> LIVE & NEWS</span></div><div className="live-copy"><h3>Stay in the know.</h3><p>Make space for live broadcasts, headlines and stories from around the world.</p><button className="primary-button small-button" onClick={() => showNotice("Live news")}>Explore live news <ChevronRight size={15} /></button></div></div>
