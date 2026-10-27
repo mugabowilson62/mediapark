@@ -47,6 +47,9 @@ function App() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [liked, setLiked] = useState<string[]>(() => readStoredList("mediapark:liked"));
   const [saved, setSaved] = useState<string[]>(() => readStoredList("mediapark:saved"));
+  const [musicStudioOpen, setMusicStudioOpen] = useState(false);
+  const [tracks, setTracks] = useState<Array<{ name: string; url: string }>>([]);
+  const [currentTrack, setCurrentTrack] = useState(0);
 
   useEffect(() => {
     try {
@@ -158,6 +161,36 @@ function App() {
         </header>
 
         <div className="page-content">
+          {musicStudioOpen && <section className="music-studio" aria-labelledby="music-studio-title">
+            <div className="music-studio-heading">
+              <div><div className="overline">PHASE 2 · FIRST WORKING MEDIA TOOL</div><h2 id="music-studio-title">Your Music Studio</h2><p>Play audio files from your device in this browser. Your files stay on your device.</p></div>
+              <button className="icon-button" onClick={() => setMusicStudioOpen(false)} aria-label="Close music studio"><X size={18} /></button>
+            </div>
+            <label className="music-upload">
+              <Plus size={18} /> Add audio files
+              <input type="file" accept="audio/*" multiple onChange={(event) => {
+                const files = Array.from(event.currentTarget.files ?? []);
+                const additions = files.map((file) => ({ name: file.name, url: URL.createObjectURL(file) }));
+                setTracks((previous) => {
+                  const next = [...previous, ...additions];
+                  if (previous.length === 0 && additions.length > 0) setCurrentTrack(0);
+                  return next;
+                });
+                event.currentTarget.value = "";
+              }} />
+            </label>
+            {tracks.length === 0 ? <div className="music-empty"><Headphones size={30} /><b>Your playlist starts here</b><span>Choose MP3, WAV, M4A, or another audio file supported by your browser.</span></div> : <>
+              <div className="music-now-playing"><span className="music-playing-icon"><AudioLines size={22} /></span><div><small>NOW PLAYING</small><b>{tracks[currentTrack]?.name ?? "Select a track"}</b></div></div>
+              {tracks[currentTrack] && <audio className="music-audio" controls preload="metadata" src={tracks[currentTrack].url} />}
+              <div className="music-playlist"><h3>Playlist <span>{tracks.length} {tracks.length === 1 ? "track" : "tracks"}</span></h3>
+                {tracks.map((track, index) => <div className={"music-track " + (index === currentTrack ? "selected" : "")} key={track.url}>
+                  <button onClick={() => setCurrentTrack(index)} aria-current={index === currentTrack ? "true" : undefined}><span className="track-number">{index === currentTrack ? <AudioLines size={15} /> : String(index + 1).padStart(2, "0")}</span><span className="track-name">{track.name}</span><span className="track-select">{index === currentTrack ? "Selected" : "Play"}</span></button>
+                  <button className="track-remove" aria-label={"Remove " + track.name} onClick={() => { URL.revokeObjectURL(track.url); setTracks((previous) => previous.filter((_, i) => i !== index)); setCurrentTrack((current) => current > index ? current - 1 : current >= tracks.length - 1 && index === current ? Math.max(0, current - 1) : current); }}>×</button>
+                </div>)}
+              </div>
+            </>}
+            <p className="music-note">This is a local audio player, not AI music generation yet. Sign-in and cloud uploads will come in later phases.</p>
+          </section>}
           {notice && <div className="notice-banner" role="status"><Sparkles size={17} /><span>{notice}</span><button aria-label="Dismiss notice" onClick={() => setNotice("")}><X size={16} /></button></div>}
           {search.trim() && <div className="search-result-note">Search preview for <b>“{search}”</b> — full search will be connected later.</div>}
 
@@ -187,7 +220,7 @@ function App() {
 
           <section className="section-block">
             <div className="section-heading"><div><div className="overline">YOUR TOOLKIT</div><h2>What are we making today?</h2><p>A whole creative universe, one place to start.</p></div><button className="subtle-link" onClick={() => showNotice("All tools")}>Explore all tools <ChevronRight size={16} /></button></div>
-            <div className="feature-grid">{visibleFeatures.map(({ title, description, icon: Icon, label, tone }) => <button className="feature-card" key={title} onClick={() => showNotice(title)}><div className="feature-card-top"><span className={"feature-icon " + tone}><Icon size={21} /></span><span className={"feature-label " + tone}>{label}</span></div><h3>{title}</h3><p>{description}</p><span className="feature-link">Open workspace <ChevronRight size={15} /></span></button>)}{visibleFeatures.length === 0 && <div className="empty-state">No tools match “{search}”. Try another search.</div>}</div>
+            <div className="feature-grid">{visibleFeatures.map(({ title, description, icon: Icon, label, tone }) => <button className="feature-card" key={title} onClick={() => title === "AI Music Studio" ? setMusicStudioOpen(true) : showNotice(title)}><div className="feature-card-top"><span className={"feature-icon " + tone}><Icon size={21} /></span><span className={"feature-label " + tone}>{label}</span></div><h3>{title}</h3><p>{description}</p><span className="feature-link">Open workspace <ChevronRight size={15} /></span></button>)}{visibleFeatures.length === 0 && <div className="empty-state">No tools match “{search}”. Try another search.</div>}</div>
           </section>
 
           <section className="section-block discover-section">
