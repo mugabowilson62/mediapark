@@ -12,9 +12,9 @@ The first responsive React frontend is in place. It includes:
 - A discovery feed preview for video, audio and news posts
 - Trending topics and a live-news preview panel
 - Responsive layouts for desktop, tablet and mobile
-- Interactive frontend states for search, likes, navigation and feature notices
+- Interactive frontend states for search, likes, saved posts, media-category navigation and feature notices
 
-The first page is a **frontend prototype**. The buttons and cards are visual interactions; they do not yet connect to AI generation, media processing, live broadcasts, game services, accounts, messaging or calling.
+The first page is a **frontend prototype**. Search filters tool cards and discovery posts; Videos, Music and Live news filter the feed; Saved collects bookmarked preview posts. Likes and saved posts persist in this browser using `localStorage` (they are not synced across devices or accounts). Search remains available on narrow mobile screens. The buttons and cards do not yet connect to AI generation, media processing, live broadcasts, game services, accounts, messaging or calling.
 
 ## Run locally
 
@@ -41,11 +41,11 @@ npm run build
 - `index.html` — minimal Vite entry shell
 - `vite.config.ts` — Vite configuration
 
-The interface is built with React components rather than writing the page layout as a large plain HTML document. Vite still requires a minimal HTML shell to mount the React application.
+The interface is built with React components rather than writing the page layout as a large plain HTML document. Vite still requires a minimal HTML shell to mount the React application. A `vercel.json` file defines the Vite build command and `dist` output directory for Vercel deployments.
 
 ## Roadmap
 
-1. Refine the frontend and page navigation.
+1. **Phase 1 — frontend foundation:** responsive layout, category navigation, tool/feed search, browser-persisted likes and saved posts, empty states, keyboard shortcuts, accessibility labels, Vercel build configuration, and a GitHub Actions TypeScript/production-build check.
 2. Add authentication and creator profiles.
 3. Build upload and content-feed workflows.
 4. Integrate approved AI music and media-processing services.
