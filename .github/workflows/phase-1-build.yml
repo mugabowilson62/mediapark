@@ -1,0 +1,23 @@
+name: Phase 1 build check
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feature/phase-1-functional-navigation
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Type-check and build
+        run: npm run build
