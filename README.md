@@ -41,11 +41,11 @@ npm run build
 - `index.html` — minimal Vite entry shell
 - `vite.config.ts` — Vite configuration
 
-The interface is built with React components rather than writing the page layout as a large plain HTML document. Vite still requires a minimal HTML shell to mount the React application.
+The interface is built with React components rather than writing the page layout as a large plain HTML document. Vite still requires a minimal HTML shell to mount the React application. A `vercel.json` file defines the Vite build command and `dist` output directory for Vercel deployments.
 
 ## Roadmap
 
-1. **Phase 1 — in progress:** stabilize the responsive frontend, media-category navigation, tool search, browser-persisted likes and saved posts, and empty states; then verify the production build and interaction flows.
+1. **Phase 1 — frontend foundation:** responsive layout, category navigation, tool/feed search, browser-persisted likes and saved posts, empty states, keyboard shortcuts, accessibility labels, Vercel build configuration, and a GitHub Actions TypeScript/production-build check.
 2. Add authentication and creator profiles.
 3. Build upload and content-feed workflows.
 4. Integrate approved AI music and media-processing services.
