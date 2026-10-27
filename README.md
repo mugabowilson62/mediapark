@@ -14,7 +14,7 @@ The first responsive React frontend is in place. It includes:
 - Responsive layouts for desktop, tablet and mobile
 - Interactive frontend states for search, likes, saved posts, media-category navigation and feature notices
 
-The first page is a **frontend prototype**. Search now filters the tool cards and discovery posts; Videos, Music and Live news filter the feed; Saved collects bookmarked preview posts. These interactions are currently in-memory only. The buttons and cards do not yet connect to AI generation, media processing, live broadcasts, game services, accounts, messaging or calling.
+The first page is a **frontend prototype**. Search filters tool cards and discovery posts; Videos, Music and Live news filter the feed; Saved collects bookmarked preview posts. Likes and saved posts persist in this browser using `localStorage` (they are not synced across devices or accounts). Search remains available on narrow mobile screens. The buttons and cards do not yet connect to AI generation, media processing, live broadcasts, game services, accounts, messaging or calling.
 
 ## Run locally
 
@@ -45,7 +45,7 @@ The interface is built with React components rather than writing the page layout
 
 ## Roadmap
 
-1. **In progress:** refine the frontend with functional media-category navigation, tool search and saved-post interactions.
+1. **Phase 1 — in progress:** stabilize the responsive frontend, media-category navigation, tool search, browser-persisted likes and saved posts, and empty states; then verify the production build and interaction flows.
 2. Add authentication and creator profiles.
 3. Build upload and content-feed workflows.
 4. Integrate approved AI music and media-processing services.
