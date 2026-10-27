@@ -142,7 +142,7 @@ h1,h2,h3,p{margin-top:0}
 .feed-actions{display:flex;align-items:center;gap:12px;border-top:1px solid #ffffff0c;padding-top:10px}
 .feed-actions button{display:flex;align-items:center;gap:5px;border:0;background:none;color:#9b98ad;padding:0;font-size:8px}
 .feed-actions button:first-child{margin-right:auto}
-.feed-actions button.liked{color:#f39acb}
+.feed-actions button.liked{color:#f39acb}.feed-actions button.saved{color:#b9a8ff}
 .right-column{display:grid;gap:12px}
 .side-panel{border:1px solid #ffffff12;border-radius:15px;background:#12121b;padding:14px}
 .side-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
