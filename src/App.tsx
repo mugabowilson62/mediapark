@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
   AudioLines, Bell, ChevronDown, ChevronRight, Compass, Gamepad2,
   Headphones, Image, Menu, MessageCircle, Mic2, MonitorPlay, Music2,
@@ -29,13 +29,39 @@ const feedItems = [
   { name: "World Brief", handle: "@worldbrief", time: "1 hr ago", title: "The stories people are talking about today", kind: "NEWS", icon: Newspaper, tone: "feed-art-three", likes: "1.2k" },
 ];
 
+function readStoredList(key: string): string[] {
+  try {
+    const stored = window.localStorage.getItem(key);
+    const parsed: unknown = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) && parsed.every((item) => typeof item === "string") ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function App() {
   const [activeNav, setActiveNav] = useState("Home");
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [liked, setLiked] = useState<string[]>([]);
-  const [saved, setSaved] = useState<string[]>([]);
+  const [liked, setLiked] = useState<string[]>(() => readStoredList("mediapark:liked"));
+  const [saved, setSaved] = useState<string[]>(() => readStoredList("mediapark:saved"));
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("mediapark:liked", JSON.stringify(liked));
+    } catch {
+      // Keep the interface usable when browser storage is unavailable.
+    }
+  }, [liked]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("mediapark:saved", JSON.stringify(saved));
+    } catch {
+      // Keep the interface usable when browser storage is unavailable.
+    }
+  }, [saved]);
 
   const showNotice = (name: string) => {
     setNotice(name + " is part of the Mediapark plan. This is the first frontend preview; its service will be connected in a later step.");
