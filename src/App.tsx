@@ -50,6 +50,11 @@ function App() {
   const [musicStudioOpen, setMusicStudioOpen] = useState(false);
   const [tracks, setTracks] = useState<Array<{ name: string; url: string }>>([]);
   const [currentTrack, setCurrentTrack] = useState(0);
+  const [musicPrompt, setMusicPrompt] = useState("");
+  const [musicStyle, setMusicStyle] = useState("Afrobeat");
+  const [musicMood, setMusicMood] = useState("Uplifting");
+  const [musicVocals, setMusicVocals] = useState("Instrumental");
+  const [musicDuration, setMusicDuration] = useState("30 seconds");
 
   useEffect(() => {
     try {
@@ -165,6 +170,42 @@ function App() {
             <div className="music-studio-heading">
               <div><div className="overline">PHASE 2 · FIRST WORKING MEDIA TOOL</div><h2 id="music-studio-title">Your Music Studio</h2><p>Play audio files from your device in this browser. Your files stay on your device.</p></div>
               <button className="icon-button" onClick={() => setMusicStudioOpen(false)} aria-label="Close music studio"><X size={18} /></button>
+            </div>
+            <div className="studio-controls" aria-labelledby="studio-controls-title">
+              <div className="studio-controls-title">
+                <div><div className="overline">PHASE 3 · CREATION SETTINGS</div><h3 id="studio-controls-title">Shape your sound</h3><p>Describe the music you want to make, then tune the style and feel.</p></div>
+                <span className="studio-preview-badge">FRONTEND PREVIEW</span>
+              </div>
+              <label className="studio-field studio-prompt-field">Describe your track
+                <textarea value={musicPrompt} onChange={(event) => setMusicPrompt(event.target.value)} maxLength={600} rows={4} placeholder="Example: A warm Afrobeat track inspired by a Kigali sunset, with bright guitars and a relaxed groove." />
+                <span className="studio-field-hint">{musicPrompt.length}/600 characters</span>
+              </label>
+              <div className="studio-settings-grid">
+                <label className="studio-field">Music style
+                  <select value={musicStyle} onChange={(event) => setMusicStyle(event.target.value)}>
+                    <option>Afrobeat</option><option>Afropop</option><option>R&amp;B</option><option>Hip-hop</option><option>Gospel</option><option>Ambient</option><option>Electronic</option><option>Acoustic</option><option>Jazz</option><option>Classical</option>
+                  </select>
+                </label>
+                <label className="studio-field">Mood
+                  <select value={musicMood} onChange={(event) => setMusicMood(event.target.value)}>
+                    <option>Uplifting</option><option>Peaceful</option><option>Romantic</option><option>Energetic</option><option>Melancholic</option><option>Mysterious</option><option>Triumphant</option>
+                  </select>
+                </label>
+                <label className="studio-field">Vocals
+                  <select value={musicVocals} onChange={(event) => setMusicVocals(event.target.value)}>
+                    <option>Instrumental</option><option>Female vocals</option><option>Male vocals</option><option>Duet</option><option>Choir</option>
+                  </select>
+                </label>
+                <label className="studio-field">Track length
+                  <select value={musicDuration} onChange={(event) => setMusicDuration(event.target.value)}>
+                    <option>30 seconds</option><option>1 minute</option><option>2 minutes</option><option>3 minutes</option>
+                  </select>
+                </label>
+              </div>
+              <div className="studio-generate-row">
+                <p>These settings are a preview. Music generation will be connected in a later phase.</p>
+                <button className="primary-button studio-generate-button" disabled={!musicPrompt.trim()} onClick={() => setNotice("Your music brief is ready: " + musicStyle + " · " + musicMood + " · " + musicVocals + " · " + musicDuration + ". The generation service will be connected in a later phase.")}><WandSparkles size={16} /> Prepare music brief <ChevronRight size={16} /></button>
+              </div>
             </div>
             <label className="music-upload">
               <Plus size={18} /> Add audio files
