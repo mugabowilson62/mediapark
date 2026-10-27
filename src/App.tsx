@@ -194,12 +194,12 @@ function App() {
           {notice && <div className="notice-banner" role="status"><Sparkles size={17} /><span>{notice}</span><button aria-label="Dismiss notice" onClick={() => setNotice("")}><X size={16} /></button></div>}
           {search.trim() && <div className="search-result-note">Search preview for <b>“{search}”</b> — full search will be connected later.</div>}
 
-          {activeNav !== "Discover" && <section className="welcome-row">
+          {activeNav !== "Discover" && <>
+          <section className="welcome-row">
             <div><div className="date-label"><span className="live-dot" /> YOUR WORLD, ALL IN ONE PLACE</div><h1>Make room for <span>your next big thing.</span></h1><p>Create something new, find your next favorite, or catch up with your world.</p></div>
             <button className="secondary-button welcome-action" onClick={() => showNotice("Quick create")}><Plus size={17} /> Quick create</button>
           </section>
 
-          {activeNav !== "Discover" && <>
           <section className="hero-panel">
             <div className="hero-copy">
               <div className="hero-pill"><Sparkles size={14} /> INTRODUCING YOUR CREATIVE SPACE</div>
