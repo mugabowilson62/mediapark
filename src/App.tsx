@@ -174,11 +174,12 @@ function App() {
               <div className="hero-actions"><button className="primary-button" onClick={() => showNotice("AI Music Studio")}><WandSparkles size={17} /> Start creating <ChevronRight size={17} /></button><button className="text-button" onClick={() => showNotice("Studio tour")}>Take a tour <Play size={14} fill="currentColor" /></button></div>
               <div className="hero-foot"><span><span className="mini-avatar mini-one">N</span><span className="mini-avatar mini-two">K</span><span className="mini-avatar mini-three">A</span></span><small>Made for makers, listeners & storytellers</small></div>
             </div>
-            <div className="hero-art" aria-label="Abstract audio waveform artwork">
+            <div className="hero-art" aria-label="Forest-inspired creative artwork with wildlife">
               <div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" /><div className="art-glow" />
-              <div className="art-label"><span className="equalizer"><i /><i /><i /><i /></span> MEDIAPARK STUDIO <span className="art-live">● READY</span></div>
+              <div className="art-label"><span className="equalizer"><i /><i /><i /><i /></span> FOREST CREATIVE STUDIO <span className="art-live">● READY</span></div>
               <div className="art-disc"><div className="disc-core"><AudioLines size={42} /></div></div>
               <div className="sound-wave">{Array.from({ length: 37 }, (_, i) => <i key={i} style={{ "--bar-height": (18 + Math.abs(Math.sin(i * 0.7) * Math.cos(i * 0.17)) * 76) + "px", "--bar-delay": (i * 0.035) + "s" } as CSSProperties & { "--bar-height": string; "--bar-delay": string }} />)}</div>
+              <div className="animal-strip" aria-label="Forest wildlife: lion, elephant, giraffe, parrot and butterfly">🌿 🦁 🐘 🦒 🦜 🦋</div>
               <div className="floating-card floating-top"><span className="float-icon purple"><Music2 size={17} /></span><span><b>Find your sound</b><small>AI Music Studio</small></span><ChevronRight size={15} /></div>
               <div className="floating-card floating-bottom"><span className="float-icon peach"><Video size={17} /></span><span><b>Tell your story</b><small>Creator tools</small></span><span className="float-play"><Play size={12} fill="currentColor" /></span></div>
             </div>
