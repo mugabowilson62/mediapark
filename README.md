@@ -1,33 +1,39 @@
 # Mediapark
 
-Mediapark is an all-in-one creative and entertainment platform concept, built with **React, TypeScript and Vite**.
+Mediapark is a creative and entertainment platform prototype built with **React, TypeScript and Vite**.
 
-## Frontend status
+## Current frontend
 
-The first responsive React frontend is in place. It includes:
+The responsive frontend includes:
 
-- A creator-focused home dashboard and navigation
-- A visual hero for the creative studio
-- Cards for AI music, audio recording/editing, video editing, image editing, games, and live news
-- A discovery feed preview for video, audio and news posts
-- Trending topics and a live-news preview panel
-- Responsive layouts for desktop, tablet and mobile
-- Interactive frontend states for search, likes, saved posts, media-category navigation and feature notices
+- A forest-green creative dashboard with wildlife accents
+- Navigation for Home, Discover, Videos, Music, Live news and Saved
+- Search across the tool cards and discovery feed
+- Preview feed cards for video, audio and news
+- Browser-persisted likes and saved posts
+- Empty states, keyboard shortcuts and accessible button labels
+- Responsive desktop, tablet and mobile styling
 
-The first page is a **frontend prototype**. Search filters tool cards and discovery posts; Videos, Music and Live news filter the feed; Saved collects bookmarked preview posts. Likes and saved posts persist in this browser using `localStorage` (they are not synced across devices or accounts). Search remains available on narrow mobile screens. The buttons and cards do not yet connect to AI generation, media processing, live broadcasts, game services, accounts, messaging or calling.
+This is still a **frontend prototype**. Likes and saved posts are stored in the current browser using `localStorage`; they are not synced across accounts or devices. Search is a local preview filter, not a backend search service. AI generation, media processing, uploads, live broadcasts, games, accounts, messaging and calling are not connected yet. Buttons for those future services show a prototype notice.
+
+## Live preview
+
+The current hosting target is Render:
+
+- https://mediapark.onrender.com/
+
+Render should use a **Static Site** with build command `npm install && npm run build` and publish directory `dist`. The GitHub Actions workflow `.github/workflows/phase-1-build.yml` runs the TypeScript check and Vite production build on pushes to `main` and pull requests.
 
 ## Run locally
 
-Install a recent version of Node.js, then run:
+Use Node.js 20 or newer:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite in your terminal.
-
-To create a production build:
+To run the production build check:
 
 ```bash
 npm run build
@@ -35,22 +41,20 @@ npm run build
 
 ## Project structure
 
-- `src/App.tsx` — React components and page interactions
-- `src/index.css` — responsive styles and visual design
+- `src/App.tsx` — page layout and frontend interactions
+- `src/index.css` — visual design and responsive styling
 - `src/main.tsx` — React entry point
-- `index.html` — minimal Vite entry shell
+- `index.html` — Vite HTML shell
 - `vite.config.ts` — Vite configuration
-
-The interface is built with React components rather than writing the page layout as a large plain HTML document. Vite still requires a minimal HTML shell to mount the React application. A `vercel.json` file defines the Vite build command and `dist` output directory for Vercel deployments.
 
 ## Roadmap
 
-1. **Phase 1 — frontend foundation:** responsive layout, category navigation, tool/feed search, browser-persisted likes and saved posts, empty states, keyboard shortcuts, accessibility labels, Vercel build configuration, and a GitHub Actions TypeScript/production-build check.
+1. **Phase 1 — frontend foundation:** responsive layout, navigation, search, browser-persisted likes and saved posts, empty states, keyboard shortcuts, accessibility labels, and automated build check.
 2. Add authentication and creator profiles.
 3. Build upload and content-feed workflows.
 4. Integrate approved AI music and media-processing services.
 5. Add secure media storage, moderation and search.
 6. Add realtime messaging, audio/video calling and live streaming.
-7. Add tests, deployment and security controls.
+7. Expand automated browser tests and security controls.
 
 Keep API keys and other secrets on the server in environment variables. Never commit secrets to this repository.
