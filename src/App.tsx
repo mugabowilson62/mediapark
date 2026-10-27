@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   AudioLines, Bell, ChevronDown, ChevronRight, Compass, Gamepad2,
   Headphones, Image, Menu, MessageCircle, Mic2, MonitorPlay, Music2,
@@ -44,6 +44,7 @@ function App() {
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [liked, setLiked] = useState<string[]>(() => readStoredList("mediapark:liked"));
   const [saved, setSaved] = useState<string[]>(() => readStoredList("mediapark:saved"));
 
@@ -63,9 +64,29 @@ function App() {
     }
   }, [saved]);
 
+  useEffect(() => {
+    if (!notice) return;
+    const timeoutId = window.setTimeout(() => setNotice(""), 4800);
+    return () => window.clearTimeout(timeoutId);
+  }, [notice]);
+
+  useEffect(() => {
+    const handleKeyboardShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+        setNotice("");
+      }
+    };
+    window.addEventListener("keydown", handleKeyboardShortcut);
+    return () => window.removeEventListener("keydown", handleKeyboardShortcut);
+  }, []);
+
   const showNotice = (name: string) => {
     setNotice(name + " is part of the Mediapark plan. This is the first frontend preview; its service will be connected in a later step.");
-    window.setTimeout(() => setNotice(""), 4800);
   };
 
   const navGroups = [
@@ -130,7 +151,7 @@ function App() {
           <button className="icon-button mobile-menu" aria-label="Open menu" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <X size={20} /> : <Menu size={20} />}</button>
           <div className="breadcrumbs"><span>Workspace</span><ChevronRight size={14} /><b>{activeNav}</b></div>
           <div className="top-actions">
-            <label className="search-box"><Search size={17} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Mediapark" /><kbd>⌘ K</kbd></label>
+            <label className="search-box"><Search size={17} /><input ref={searchInputRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Mediapark" aria-label="Search Mediapark" /><kbd>⌘ K</kbd></label>
             <button className="icon-button notification-button" aria-label="Notifications" onClick={() => showNotice("Notifications")}><Bell size={18} /><i /></button>
             <button className="avatar avatar-top" aria-label="Open profile" onClick={() => showNotice("Profile")}>W</button>
           </div>
