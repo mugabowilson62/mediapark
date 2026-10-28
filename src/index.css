@@ -152,7 +152,7 @@ h1,h2,h3,p{margin-top:0}
 .trend-row{width:100%;display:flex;align-items:center;gap:10px;padding:10px 0;text-align:left;background:none;border:0;border-top:1px solid #ffffff0c}
 .trend-number{font:800 12px Manrope,sans-serif;color:#706a8d;width:18px}
 .trend-row:nth-of-type(3) .trend-number{color:#b6a6ff}
-.trend-row>span:nth-child(2){flex:1;min-width:0}
+.trend-row>span:nth-last-child(2){flex:1;min-width:0}
 .trend-row b,.trend-row small{display:block}.trend-row b{font-size:9px}.trend-row small{font-size:8px;color:#8d8a9f;margin-top:4px}
 .trend-row>svg{color:#79758e}
 .live-panel{padding:0;overflow:hidden}
@@ -367,4 +367,40 @@ body{
 @media(prefers-reduced-motion:reduce){
   .sound-wave i{animation:none}
   .feature-card,.primary-button{transition:none}
+}
+
+
+/* Wildlife details are sprinkled across the interface, not confined to the hero. */
+.brand-mark{position:relative}
+.brand-mark>i{position:absolute;right:-6px;top:-7px;font-size:12px;font-style:normal;filter:drop-shadow(0 2px 3px #0005)}
+.upgrade-card{position:relative;overflow:hidden}
+.wildlife-decoration{position:absolute;right:9px;top:8px;font-size:15px;letter-spacing:1px;opacity:.82;pointer-events:none}
+.upgrade-card .upgrade-icon{position:relative;z-index:1}
+.welcome-side{display:flex;align-items:center;gap:15px;flex-shrink:0}
+.welcome-wildlife{display:inline-flex;align-items:center;gap:3px;font-size:24px;letter-spacing:-4px;filter:drop-shadow(0 3px 5px #0003);opacity:.92}
+.welcome-wildlife span{font-size:28px}
+.feature-card-top{position:relative}
+.feature-wildlife{font-size:19px;line-height:1;opacity:.9;filter:drop-shadow(0 2px 4px #0003)}
+.feed-art{position:relative;overflow:hidden}
+.feed-wildlife{position:absolute;right:13px;bottom:11px;z-index:2;font-size:25px;filter:drop-shadow(0 3px 7px #0008)}
+.trend-wildlife{flex-shrink:0;font-size:17px;line-height:1;filter:drop-shadow(0 2px 4px #0003)}
+.live-visual{overflow:hidden}
+.live-wildlife{position:absolute;top:7px;right:10px;font-size:20px;letter-spacing:2px;opacity:.9;filter:drop-shadow(0 3px 6px #0005)}
+.tip-panel{align-items:center}
+.tip-wildlife{font-size:23px;flex-shrink:0;filter:drop-shadow(0 2px 4px #0003)}
+.footer-wildlife{font-size:17px;letter-spacing:2px;opacity:.86}
+@media(max-width:700px){
+  .welcome-side{width:100%;justify-content:space-between}
+  .welcome-wildlife{font-size:21px}
+  .welcome-wildlife span{font-size:24px}
+  .feature-wildlife{font-size:16px}
+  .feed-wildlife{right:9px;bottom:8px;font-size:21px}
+  .live-wildlife{font-size:17px}
+}
+@media(max-width:440px){
+  .welcome-side{gap:8px}
+  .welcome-wildlife{font-size:18px}
+  .welcome-wildlife span{font-size:21px}
+  .feature-wildlife{font-size:14px}
+  .footer-wildlife{font-size:15px}
 }
