@@ -212,7 +212,7 @@ function App() {
               <div className="art-label"><span className="equalizer"><i /><i /><i /><i /></span> FOREST CREATIVE STUDIO <span className="art-live">● READY</span></div>
               <div className="art-disc"><div className="disc-core"><AudioLines size={42} /></div></div>
               <div className="sound-wave">{Array.from({ length: 37 }, (_, i) => <i key={i} style={{ "--bar-height": (18 + Math.abs(Math.sin(i * 0.7) * Math.cos(i * 0.17)) * 76) + "px", "--bar-delay": (i * 0.035) + "s" } as CSSProperties & { "--bar-height": string; "--bar-delay": string }} />)}</div>
-              <div className="animal-strip" aria-label="Forest wildlife: lion, elephant, giraffe, parrot and butterfly">🌿 🦁 🐘 🦒 🦜 🦋</div>
+              <div className="animal-strip" aria-label="Park wildlife: lion, elephant, giraffe, zebra, gorilla, rhino, hippo, buffalo, antelope, crocodile, monkey, parrot, flamingo, butterfly and birds">🌿 🦁 🐘 🦒 🦓 🦍 🦏 🦛 🐃 🦌 🐊 🐒 🦜 🦩 🦋 🐦</div>
               <div className="floating-card floating-top"><span className="float-icon purple"><Music2 size={17} /></span><span><b>Find your sound</b><small>AI Music Studio</small></span><ChevronRight size={15} /></div>
               <div className="floating-card floating-bottom"><span className="float-icon peach"><Video size={17} /></span><span><b>Tell your story</b><small>Creator tools</small></span><span className="float-play"><Play size={12} fill="currentColor" /></span></div>
             </div>
