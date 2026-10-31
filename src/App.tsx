@@ -26,6 +26,7 @@ const features: Feature[] = [
 const youtubeVideos = [
   { id: "FPMZTJ8KJwk", title: "Muziki Rwanda · Video 1" },
   { id: "ImfKncq5MdQ", title: "Muziki Rwanda · Video 2" },
+  { id: "MgA9JKlC9-k", title: "Muziki Rwanda · Video 3" },
 ];
 
 const feedItems = [
