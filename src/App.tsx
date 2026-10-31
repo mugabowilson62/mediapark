@@ -199,8 +199,20 @@ function App() {
           {notice && <div className="notice-banner" role="status"><Sparkles size={17} /><span>{notice}</span><button aria-label="Dismiss notice" onClick={() => setNotice("")}><X size={16} /></button></div>}
           {search.trim() && <div className="search-result-note">Search preview for <b>“{search}”</b> — full search will be connected later.</div>}
 
-          {(activeNav === "Videos" || activeNav === "Discover") && (
-            <section className="section-block youtube-section" aria-labelledby="youtube-heading">
+
+
+          <section className="gahi-promo" aria-labelledby="gahi-promo-title">
+            <div className="gahi-promo-copy">
+              <div className="gahi-kicker"><span className="gahi-sound-dot" /> THE SOUND OF A NEW GENERATION</div>
+              <h1 id="gahi-promo-title">GAHI <span>FAMILY MUSIC</span></h1>
+              <p className="gahi-tagline">MODERN. YOUNG. UNITED BY BLOOD.</p>
+              <p className="gahi-motto">Music is your passion. Make it heard.</p>
+              <a className="gahi-channel-button" href="https://www.youtube.com/@muzikirwanda1" target="_blank" rel="noreferrer"><Play size={16} fill="currentColor" /> EXPLORE OUR MUSIC <ChevronRight size={17} /></a>
+            </div>
+            <div className="gahi-promo-art" aria-hidden="true"><span className="gahi-note">♫</span><span className="gahi-orbit" /><span className="gahi-eq">▂ ▅ ▃ ▇ ▄ ▆ ▂</span><span className="gahi-butterfly">🦋</span></div>
+          </section>
+
+          <section className="section-block youtube-section" aria-labelledby="youtube-heading">
               <div className="section-heading">
                 <div><div className="overline">FROM YOUR CHANNEL</div><h2 id="youtube-heading">Muziki Rwanda videos</h2><p>Watch videos from <a href="https://www.youtube.com/@muzikirwanda1" target="_blank" rel="noreferrer">@muzikirwanda1</a> right here in Mediapark.</p></div>
                 <a className="subtle-link youtube-channel-link" href="https://www.youtube.com/@muzikirwanda1" target="_blank" rel="noreferrer">Visit YouTube channel <ChevronRight size={16} /></a>
@@ -224,18 +236,7 @@ function App() {
               </div>
               <p className="youtube-note">If a video cannot play here, its YouTube owner may have disabled embedding. You can still open it on YouTube.</p>
             </section>
-          )}
 
-          <section className="gahi-promo" aria-labelledby="gahi-promo-title">
-            <div className="gahi-promo-copy">
-              <div className="gahi-kicker"><span className="gahi-sound-dot" /> THE SOUND OF A NEW GENERATION</div>
-              <h1 id="gahi-promo-title">GAHI <span>FAMILY MUSIC</span></h1>
-              <p className="gahi-tagline">MODERN. YOUNG. UNITED BY BLOOD.</p>
-              <p className="gahi-motto">Music is your passion. Make it heard.</p>
-              <a className="gahi-channel-button" href="https://www.youtube.com/@muzikirwanda1" target="_blank" rel="noreferrer"><Play size={16} fill="currentColor" /> EXPLORE OUR MUSIC <ChevronRight size={17} /></a>
-            </div>
-            <div className="gahi-promo-art" aria-hidden="true"><span className="gahi-note">♫</span><span className="gahi-orbit" /><span className="gahi-eq">▂ ▅ ▃ ▇ ▄ ▆ ▂</span><span className="gahi-butterfly">🦋</span></div>
-          </section>
 
           <section className="welcome-row">
             <div><div className="date-label"><span className="live-dot" /> YOUR WORLD, ALL IN ONE PLACE</div><h1>Make room for <span>your next big thing.</span></h1><p>Create something new, find your next favorite, or catch up with your world.</p></div>
