@@ -23,6 +23,11 @@ const features: Feature[] = [
   { title: "Live & news", description: "Catch headlines, streams and what's happening.", icon: Radio, label: "WATCH", tone: "cyan" },
 ];
 
+const youtubeVideos = [
+  { id: "FPMZTJ8KJwk", title: "Muziki Rwanda · Video 1" },
+  { id: "ImfKncq5MdQ", title: "Muziki Rwanda · Video 2" },
+];
+
 const feedItems = [
   { name: "Nia Creates", handle: "@niacreates", time: "12 min ago", title: "A little sunset, a little sound 🌅", kind: "VIDEO", icon: Video, tone: "feed-art-one", likes: "2.4k" },
   { name: "Kivu Sound", handle: "@kivusound", time: "38 min ago", title: "New beat idea — late night in Kigali", kind: "AUDIO", icon: Headphones, tone: "feed-art-two", likes: "986" },
@@ -193,6 +198,33 @@ function App() {
           </section>}
           {notice && <div className="notice-banner" role="status"><Sparkles size={17} /><span>{notice}</span><button aria-label="Dismiss notice" onClick={() => setNotice("")}><X size={16} /></button></div>}
           {search.trim() && <div className="search-result-note">Search preview for <b>“{search}”</b> — full search will be connected later.</div>}
+
+          {(activeNav === "Videos" || activeNav === "Discover") && (
+            <section className="section-block youtube-section" aria-labelledby="youtube-heading">
+              <div className="section-heading">
+                <div><div className="overline">FROM YOUR CHANNEL</div><h2 id="youtube-heading">Muziki Rwanda videos</h2><p>Watch videos from <a href="https://www.youtube.com/@muzikirwanda1" target="_blank" rel="noreferrer">@muzikirwanda1</a> right here in Mediapark.</p></div>
+                <a className="subtle-link youtube-channel-link" href="https://www.youtube.com/@muzikirwanda1" target="_blank" rel="noreferrer">Visit YouTube channel <ChevronRight size={16} /></a>
+              </div>
+              <div className="youtube-grid">
+                {youtubeVideos.map((video) => (
+                  <article className="youtube-card" key={video.id}>
+                    <div className="youtube-player">
+                      <iframe
+                        src={`https://www.youtube-nocookie.com/embed/${video.id}`}
+                        title={video.title}
+                        loading="lazy"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        allowFullScreen
+                      />
+                    </div>
+                    <div className="youtube-card-caption"><b>{video.title}</b><a href={`https://www.youtube.com/watch?v=${video.id}`} target="_blank" rel="noreferrer">Open on YouTube <ChevronRight size={14} /></a></div>
+                  </article>
+                ))}
+              </div>
+              <p className="youtube-note">If a video cannot play here, its YouTube owner may have disabled embedding. You can still open it on YouTube.</p>
+            </section>
+          )}
 
           <section className="welcome-row">
             <div><div className="date-label"><span className="live-dot" /> YOUR WORLD, ALL IN ONE PLACE</div><h1>Make room for <span>your next big thing.</span></h1><p>Create something new, find your next favorite, or catch up with your world.</p></div>
