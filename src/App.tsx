@@ -47,6 +47,7 @@ function readStoredList(key: string): string[] {
 
 function App() {
   const [activeNav, setActiveNav] = useState("Home");
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(["EXPLORE"]);
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -134,16 +135,23 @@ function App() {
         <span>media<span className="brand-light">park</span><small>YOUR CREATIVE UNIVERSE</small></span>
       </a>
       <button className="create-button" onClick={() => showNotice("Create new project")}><Plus size={18} /> Create something <span>↗</span></button>
-      {navGroups.map((group) => (
-        <div className="nav-group" key={group.label}>
-          <div className="nav-label">{group.label}</div>
-          {group.items.map(({ name, icon: Icon }) => (
-            <button className={"nav-item " + (activeNav === name ? "active" : "")} aria-current={activeNav === name ? "page" : undefined} key={name} onClick={() => { setActiveNav(name); setMobileOpen(false); if (!["Home", "Discover", "Videos", "Music", "Live news", "Saved"].includes(name)) showNotice(name); }}>
-              <Icon size={18} strokeWidth={1.8} /><span>{name}</span>{name === "Messages" && <i className="unread-dot" />}
+      {navGroups.map((group) => {
+        const isExpanded = expandedGroups.includes(group.label);
+        return (
+          <div className="nav-group" key={group.label}>
+            <button className="nav-label nav-group-toggle" aria-expanded={isExpanded} onClick={() => setExpandedGroups((current) => isExpanded ? current.filter((label) => label !== group.label) : [...current, group.label])}>
+              <span>{group.label}</span><span className={"nav-chevron " + (isExpanded ? "expanded" : "")}>⌄</span>
             </button>
-          ))}
-        </div>
-      ))}
+            {isExpanded && <div className="nav-subitems">
+              {group.items.map(({ name, icon: Icon }) => (
+                <button className={"nav-item " + (activeNav === name ? "active" : "")} aria-current={activeNav === name ? "page" : undefined} key={name} onClick={() => { setActiveNav(name); setMobileOpen(false); if (!["Home", "Discover", "Videos", "Music", "Live news", "Saved"].includes(name)) showNotice(name); }}>
+                  <Icon size={18} strokeWidth={1.8} /><span>{name}</span>{name === "Messages" && <i className="unread-dot" />}
+                </button>
+              ))}
+            </div>}
+          </div>
+        );
+      })}
       <div className="sidebar-bottom">
         <div className="upgrade-card"><span className="wildlife-decoration upgrade-wildlife" aria-hidden="true">🦒 🦓</span><div className="upgrade-icon"><Sparkles size={17} /></div><strong>Your ideas, amplified.</strong><p>Your creative space is just getting started.</p><button onClick={() => showNotice("Creator account")}>Explore creator tools <ChevronRight size={15} /></button></div>
         <button className="profile-row" onClick={() => showNotice("Profile and account")}><div className="avatar avatar-me">W</div><span><b>Wilson</b><small>Creator account</small></span><ChevronDown size={16} /></button>
