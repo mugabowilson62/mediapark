@@ -404,3 +404,24 @@ body{
   .feature-wildlife{font-size:14px}
   .footer-wildlife{font-size:15px}
 }
+
+
+/* GAHI Family Music promotional hero */
+.gahi-promo{position:relative;isolation:isolate;display:flex;align-items:center;justify-content:space-between;gap:24px;min-height:260px;margin:0 0 28px;padding:34px 42px;overflow:hidden;border:1px solid rgba(190,239,177,.34);border-radius:24px;background:radial-gradient(ellipse at 82% 48%,rgba(123,222,139,.24),transparent 36%),linear-gradient(112deg,rgba(18,66,39,.96),rgba(8,31,19,.91) 62%,rgba(19,77,44,.88));box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 24px 65px rgba(0,0,0,.24)}
+.gahi-promo:before{content:"";position:absolute;inset:0;z-index:-1;background:repeating-linear-gradient(135deg,transparent 0 28px,rgba(220,255,218,.025) 29px 30px)}
+.gahi-promo-copy{position:relative;z-index:2;max-width:720px}
+.gahi-kicker{display:flex;align-items:center;gap:9px;margin-bottom:13px;color:#b9efad;font-size:10px;font-weight:900;letter-spacing:2.4px}
+.gahi-sound-dot{width:8px;height:8px;border-radius:50%;background:#b7f49a;box-shadow:0 0 15px #b7f49a}
+.gahi-promo h1{margin:0;font:900 clamp(38px,6vw,76px)/.98 Manrope,sans-serif;letter-spacing:-3px;color:#f2fff0;text-shadow:0 5px 28px rgba(0,0,0,.25)}
+.gahi-promo h1 span{display:block;color:#b6ef9b}
+.gahi-tagline{margin:17px 0 5px;color:#e5f8dd;font-size:clamp(11px,1.4vw,15px);font-weight:900;letter-spacing:2.2px}
+.gahi-motto{margin:0 0 20px;color:#c0d9c0;font-size:14px;font-weight:600}
+.gahi-channel-button{display:inline-flex;align-items:center;gap:10px;padding:12px 17px;border:1px solid rgba(226,255,219,.45);border-radius:11px;background:linear-gradient(100deg,#c3f29e,#72d99b);color:#092817;text-decoration:none;font-size:10px;font-weight:900;letter-spacing:1px;box-shadow:0 9px 25px rgba(100,214,130,.2);transition:transform .2s,box-shadow .2s}
+.gahi-channel-button:hover{transform:translateY(-2px);box-shadow:0 13px 30px rgba(100,214,130,.3)}
+.gahi-promo-art{position:absolute;right:7%;top:50%;width:230px;height:190px;transform:translateY(-50%);display:grid;place-items:center;color:#d7ffbd;pointer-events:none}
+.gahi-orbit{position:absolute;width:170px;height:170px;border:1px solid rgba(207,255,190,.25);border-radius:50%;box-shadow:0 0 0 20px rgba(207,255,190,.035),0 0 0 42px rgba(207,255,190,.025)}
+.gahi-note{position:relative;z-index:1;font:900 112px/1 Georgia,serif;color:#c8f5a8;text-shadow:0 0 34px rgba(164,245,155,.45)}
+.gahi-eq{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);white-space:nowrap;color:#a9e6a0;font-size:25px;letter-spacing:3px;text-shadow:0 0 15px #a9e6a0}
+.gahi-butterfly{position:absolute;right:0;top:8px;font-size:30px;filter:drop-shadow(0 4px 9px #0008)}
+@media(max-width:700px){.gahi-promo{min-height:255px;padding:27px 22px}.gahi-promo-art{right:-40px;top:55%;opacity:.27}.gahi-promo-copy{max-width:100%}.gahi-promo h1{font-size:clamp(36px,10vw,58px);letter-spacing:-2px}.gahi-tagline{max-width:280px;line-height:1.7;font-size:10px;letter-spacing:1.3px}.gahi-motto{font-size:12px}}
+@media(max-width:390px){.gahi-promo{padding:24px 17px}.gahi-promo h1{font-size:34px}.gahi-kicker{font-size:8px;letter-spacing:1.5px}}
