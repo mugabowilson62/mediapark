@@ -226,6 +226,17 @@ function App() {
             </section>
           )}
 
+          <section className="gahi-promo" aria-labelledby="gahi-promo-title">
+            <div className="gahi-promo-copy">
+              <div className="gahi-kicker"><span className="gahi-sound-dot" /> THE SOUND OF A NEW GENERATION</div>
+              <h1 id="gahi-promo-title">GAHI <span>FAMILY MUSIC</span></h1>
+              <p className="gahi-tagline">MODERN. YOUNG. UNITED BY BLOOD.</p>
+              <p className="gahi-motto">Music is your passion. Make it heard.</p>
+              <a className="gahi-channel-button" href="https://www.youtube.com/@muzikirwanda1" target="_blank" rel="noreferrer"><Play size={16} fill="currentColor" /> EXPLORE OUR MUSIC <ChevronRight size={17} /></a>
+            </div>
+            <div className="gahi-promo-art" aria-hidden="true"><span className="gahi-note">♫</span><span className="gahi-orbit" /><span className="gahi-eq">▂ ▅ ▃ ▇ ▄ ▆ ▂</span><span className="gahi-butterfly">🦋</span></div>
+          </section>
+
           <section className="welcome-row">
             <div><div className="date-label"><span className="live-dot" /> YOUR WORLD, ALL IN ONE PLACE</div><h1>Make room for <span>your next big thing.</span></h1><p>Create something new, find your next favorite, or catch up with your world.</p></div>
             <div className="welcome-side"><span className="welcome-wildlife" aria-label="Park wildlife">🦁 <span>🐘</span> 🦒</span><button className="secondary-button welcome-action" onClick={() => showNotice("Quick create")}><Plus size={17} /> Quick create</button></div>
