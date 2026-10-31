@@ -441,3 +441,13 @@ body{
 .youtube-card-caption a{display:inline-flex;align-items:center;gap:3px;flex-shrink:0;color:#a9e5a0;font-size:9px;font-weight:700}
 .youtube-note{margin:12px 0 0;color:#9bb5a0;font-size:9px;line-height:1.6}
 @media(max-width:600px){.youtube-section{padding:15px}.youtube-grid{grid-template-columns:1fr;gap:12px}.youtube-section .section-heading{align-items:flex-start}.youtube-card-caption{padding:11px}.youtube-card-caption b{font-size:10px}}
+
+
+/* Compact nested sidebar navigation */
+.nav-group-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;border:0;background:transparent;cursor:pointer;text-align:left;font:inherit}
+.nav-group-toggle:hover{color:#c8eac3}
+.nav-chevron{font-size:15px;line-height:1;color:#91b995;transform:rotate(-90deg);transition:transform .18s}
+.nav-chevron.expanded{transform:rotate(0deg)}
+.nav-subitems{padding-left:5px;border-left:1px solid rgba(166,230,161,.12);margin-left:8px}
+.nav-subitems .nav-item{height:35px;font-size:11px;padding-left:10px}
+.nav-subitems .nav-item.active:before{left:-6px}
