@@ -929,7 +929,7 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
     if (project.clips.length === 0) { flash("Add clips to the timeline before exporting."); return; }
     setExporting(true); setExportProgress(0); setExportMessage("Preparing your timeline…"); setPlaying(false);
     try {
-      const width = exportSize === "1080p" ? (aspect === "9:16" ? 1080 : 1920) : (aspect === "9:16" ? 720 : 1280);
+      const width = exportSize === "1080p" ? (aspect === "9:16" ? 1080 : aspect === "1:1" ? 1080 : 1920) : (aspect === "9:16" ? 720 : aspect === "1:1" ? 720 : 1280);
       const height = exportSize === "1080p" ? (aspect === "9:16" ? 1920 : 1080) : (aspect === "9:16" ? 1280 : 720);
       const webm = await renderTimeline(project, media, { width, height, fps: exportFps, quality: exportQuality }, (value, message) => { setExportProgress(value); setExportMessage(message); });
       const result = exportFormat === "mp4" ? await convertWebMToMp4(webm, (value, message) => { setExportProgress(value); setExportMessage(message); }) : webm;
