@@ -386,6 +386,129 @@ function MediaLayer({ clip, media, time, playing, muted }: {
 /* Studio                                                              */
 /* ------------------------------------------------------------------ */
 
+
+type ExportOptions = { width: number; height: number; fps: number; quality: "standard" | "high" };
+type ExportProgress = (value: number, message: string) => void;
+
+/** Render the timeline to a canvas stream and mix audio clips with Web Audio. */
+async function renderTimeline(project: Project, media: Media[], options: ExportOptions, onProgress: ExportProgress): Promise<Blob> {
+  if (!("MediaRecorder" in window) || !HTMLCanvasElement.prototype.captureStream) throw new Error("This browser does not support canvas video recording. Use the latest Chrome or Edge.");
+  const canvas = document.createElement("canvas");
+  canvas.width = options.width; canvas.height = options.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not create the video render canvas.");
+  const mediaById = new Map(media.map((item) => [item.id, item]));
+  const duration = Math.max(0.1, ...project.clips.map((clip) => clip.start + clip.duration));
+  const visuals = project.clips.filter((clip) => {
+    const track = project.tracks.find((item) => item.id === clip.trackId);
+    const item = clip.mediaId ? mediaById.get(clip.mediaId) : undefined;
+    return track && !track.hidden && track.kind === "video" && item && item.kind !== "audio";
+  });
+  const titles = project.clips.filter((clip) => project.tracks.some((track) => track.id === clip.trackId && track.kind === "title" && !track.hidden));
+  const imageCache = new Map<string, HTMLImageElement>();
+  const videoCache = new Map<string, HTMLVideoElement>();
+  const audioContext = new AudioContext();
+  const audioDestination = audioContext.createMediaStreamDestination();
+  const scheduled: AudioBufferSourceNode[] = [];
+  try {
+    for (const clip of visuals) {
+      const item = mediaById.get(clip.mediaId!)!;
+      if (item.kind === "image" && item.url) {
+        const image = new Image(); image.src = item.url; await image.decode(); imageCache.set(item.id, image);
+      } else if (item.kind === "video" && item.url) {
+        const video = document.createElement("video"); video.src = item.url; video.muted = true; video.playsInline = true; video.preload = "auto";
+        await new Promise<void>((resolve, reject) => { video.onloadedmetadata = () => resolve(); video.onerror = () => reject(new Error("Could not decode " + item.name)); video.load(); });
+        videoCache.set(item.id, video);
+      }
+    }
+    const audioClips = project.clips.filter((clip) => {
+      const track = project.tracks.find((item) => item.id === clip.trackId);
+      const asset = clip.mediaId ? mediaById.get(clip.mediaId) : undefined;
+      return track && !track.hidden && !track.muted && track.kind === "audio" && asset?.url;
+    });
+    const buffers = await Promise.all(audioClips.map(async (clip) => {
+      const asset = mediaById.get(clip.mediaId!)!;
+      const response = await fetch(asset.url!);
+      return { clip, buffer: await audioContext.decodeAudioData(await response.arrayBuffer()) };
+    }));
+    const canvasStream = canvas.captureStream(options.fps);
+    const stream = new MediaStream([...canvasStream.getVideoTracks(), ...audioDestination.stream.getAudioTracks()]);
+    const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus") ? "video/webm;codecs=vp9,opus" : "video/webm";
+    const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: options.quality === "high" ? 8000000 : 4000000, audioBitsPerSecond: 192000 });
+    const chunks: BlobPart[] = [];
+    const completed = new Promise<Blob>((resolve, reject) => {
+      recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+      recorder.onerror = () => reject(new Error("The browser stopped recording unexpectedly."));
+      recorder.onstop = () => resolve(new Blob(chunks, { type: "video/webm" }));
+    });
+    const audioStart = audioContext.currentTime + 0.15;
+    buffers.forEach(({ clip, buffer }) => {
+      const source = audioContext.createBufferSource(); const gain = audioContext.createGain();
+      source.buffer = buffer; gain.gain.value = Math.max(0, Math.min(1, clip.volume)); source.connect(gain).connect(audioDestination);
+      const offset = Math.max(0, clip.inPoint); const length = Math.min(clip.duration, buffer.duration - offset);
+      if (length > 0) source.start(audioStart + clip.start, offset, length);
+      scheduled.push(source);
+    });
+    const draw = (time: number) => {
+      ctx.fillStyle = "#07150d"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      visuals.filter((clip) => time >= clip.start && time < clip.start + clip.duration).forEach((clip) => {
+        const asset = mediaById.get(clip.mediaId!)!;
+        const track = project.tracks.find((entry) => entry.id === clip.trackId)!;
+        const local = clip.inPoint + time - clip.start;
+        ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, clip.opacity));
+        const source = asset.kind === "image" ? imageCache.get(asset.id) : videoCache.get(asset.id);
+        if (source) {
+          if (source instanceof HTMLVideoElement && Math.abs(source.currentTime - local) > 0.12) {
+            try { source.currentTime = Math.min(Math.max(0, local), Math.max(0, source.duration - 0.04)); } catch { /* wait for video metadata */ }
+          }
+          const sw = source instanceof HTMLVideoElement ? source.videoWidth : source.naturalWidth;
+          const sh = source instanceof HTMLVideoElement ? source.videoHeight : source.naturalHeight;
+          if (sw && sh) { const scale = Math.max(canvas.width / sw, canvas.height / sh); const w = sw * scale, h = sh * scale; ctx.drawImage(source, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h); }
+        } else { ctx.fillStyle = track.name.toLowerCase().includes("overlay") ? "#24563a" : "#183d2b"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+        ctx.restore();
+      });
+      titles.filter((clip) => time >= clip.start && time < clip.start + clip.duration).forEach((clip) => {
+        ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, clip.opacity)); ctx.fillStyle = "#fff"; ctx.shadowColor = "rgba(0,0,0,.65)"; ctx.shadowBlur = 18;
+        const size = Math.round(canvas.height * (clip.titleStyle === "subtitle" ? 0.045 : 0.075));
+        ctx.font = "800 " + size + "px Arial, sans-serif"; ctx.textAlign = clip.titleStyle === "lower" ? "left" : "center";
+        const x = clip.titleStyle === "lower" ? canvas.width * 0.08 : canvas.width / 2;
+        const y = clip.titleStyle === "lower" ? canvas.height * 0.86 : clip.titleStyle === "subtitle" ? canvas.height * 0.9 : canvas.height / 2;
+        if (clip.titleStyle === "subtitle") { const width = Math.min(canvas.width * 0.88, ctx.measureText(clip.text ?? "").width + 40); ctx.fillStyle = "rgba(0,0,0,.68)"; ctx.fillRect((canvas.width - width) / 2, y - size, width, size * 1.6); ctx.fillStyle = "#fff"; }
+        ctx.fillText(clip.text ?? "", x, y, canvas.width * 0.86); ctx.restore();
+      });
+    };
+    draw(0); recorder.start(250);
+    const started = performance.now(); const frameMs = 1000 / options.fps;
+    await new Promise<void>((resolve) => {
+      const tick = () => { const elapsed = (performance.now() - started) / 1000; const time = Math.min(duration, elapsed); draw(time); onProgress(Math.min(96, Math.round(time / duration * 96)), "Rendering " + Math.round(time / duration * 100) + "%"); if (time >= duration) { recorder.stop(); resolve(); } else window.setTimeout(tick, frameMs); };
+      tick();
+    });
+    onProgress(98, "Finishing video…"); return await completed;
+  } finally {
+    scheduled.forEach((source) => { try { source.stop(); } catch { /* already ended */ } });
+    await audioContext.close().catch(() => undefined);
+    videoCache.forEach((video) => { video.pause(); video.removeAttribute("src"); video.load(); });
+  }
+}
+
+/** Load FFmpeg WebAssembly only when the user chooses MP4. */
+async function convertWebMToMp4(input: Blob, onProgress: ExportProgress): Promise<Blob> {
+  const w = window as Window & { FFmpeg?: any };
+  if (!w.FFmpeg) await new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script"); script.src = "https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js";
+    script.onload = () => resolve(); script.onerror = () => reject(new Error("Could not load FFmpeg. Check your connection or export as WebM."));
+    document.head.appendChild(script);
+  });
+  const api = w.FFmpeg; if (!api?.createFFmpeg) throw new Error("FFmpeg WebAssembly could not be initialized.");
+  const ffmpeg = api.createFFmpeg({ log: false, corePath: "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js" });
+  if (!ffmpeg.isLoaded()) await ffmpeg.load();
+  ffmpeg.FS("writeFile", "input.webm", new Uint8Array(await input.arrayBuffer()));
+  ffmpeg.setProgress(({ ratio }: { ratio: number }) => onProgress(98 + Math.round(Math.max(0, Math.min(1, ratio)) * 2), "Converting to MP4…"));
+  await ffmpeg.run("-i", "input.webm", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-c:a", "aac", "-movflags", "+faststart", "output.mp4");
+  const output = ffmpeg.FS("readFile", "output.mp4"); ffmpeg.FS("unlink", "input.webm"); ffmpeg.FS("unlink", "output.mp4");
+  return new Blob([output.buffer], { type: "video/mp4" });
+}
+
 export default function VideoStudio({ onExport }: { onExport: () => void }) {
   const [media, setMedia] = useState<Media[]>(initialMedia);
   const [project, setProject] = useState<Project>(initialProject);
@@ -398,6 +521,14 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
   const [panelTab, setPanelTab] = useState<"media" | "titles">("media");
   const [projectName, setProjectName] = useState("Kigali at dawn");
   const [status, setStatus] = useState("Ready. Click a clip in the media panel to add it.");
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportMessage, setExportMessage] = useState("");
+  const [exportFormat, setExportFormat] = useState<"webm" | "mp4">("webm");
+  const [exportSize, setExportSize] = useState<"720p" | "1080p">("1080p");
+  const [exportFps, setExportFps] = useState<30 | 60>(30);
+  const [exportQuality, setExportQuality] = useState<"standard" | "high">("high");
   const [, setHistoryVersion] = useState(0);
 
   const projectRef = useRef(project);
@@ -781,6 +912,24 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
     }
   };
 
+
+  const startExport = async () => {
+    if (exporting) return;
+    if (project.clips.length === 0) { flash("Add clips to the timeline before exporting."); return; }
+    setExporting(true); setExportProgress(0); setExportMessage("Preparing your timeline…"); setPlaying(false);
+    try {
+      const width = exportSize === "1080p" ? (aspect === "9:16" ? 1080 : 1920) : (aspect === "9:16" ? 720 : 1280);
+      const height = exportSize === "1080p" ? (aspect === "9:16" ? 1920 : 1080) : (aspect === "9:16" ? 1280 : 720);
+      const webm = await renderTimeline(project, media, { width, height, fps: exportFps, quality: exportQuality }, (value, message) => { setExportProgress(value); setExportMessage(message); });
+      const result = exportFormat === "mp4" ? await convertWebMToMp4(webm, (value, message) => { setExportProgress(value); setExportMessage(message); }) : webm;
+      const url = URL.createObjectURL(result); const anchor = document.createElement("a"); anchor.href = url;
+      anchor.download = (projectName.trim() || "mediapark-video").replace(/[^a-z0-9-_]+/gi, "-") + (exportFormat === "mp4" ? ".mp4" : ".webm");
+      document.body.appendChild(anchor); anchor.click(); anchor.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setExportProgress(100); setExportMessage("Export complete — your video has been downloaded."); flash("Video exported successfully.");
+    } catch (error) { const message = error instanceof Error ? error.message : "Video export failed."; setExportMessage(message); flash(message); }
+    finally { setExporting(false); }
+  };
+
   /* ---- preview layers ---- */
 
   const isActive = (clip: Clip) => playhead >= clip.start && playhead < clip.start + clip.duration;
@@ -832,7 +981,7 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
         <div className="vs-head-meta">
           <span>1080p</span><span>{FPS} fps</span><span>{aspect}</span>
         </div>
-        <button className="vs-export" onClick={onExport}><Download size={16} /> Export video</button>
+        <button className="vs-export" onClick={() => { onExport(); setExportOpen(true); }}><Download size={16} /> Export video</button>
       </header>
 
       <div className="vs-main">
@@ -1097,6 +1246,20 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
           </div>
         </div>
       </div>
+      {exportOpen && <div className="vs-export-scrim" role="presentation">
+        <section className="vs-export-dialog" role="dialog" aria-modal="true" aria-labelledby="vs-export-title">
+          <div className="vs-export-dialog-head"><div><span className="vs-export-kicker">RENDER YOUR PROJECT</span><h3 id="vs-export-title">Export video</h3></div><button type="button" className="vs-icon-btn" disabled={exporting} onClick={() => setExportOpen(false)} aria-label="Close export settings">×</button></div>
+          <div className="vs-export-options">
+            <label>Format<select value={exportFormat} disabled={exporting} onChange={(event) => setExportFormat(event.target.value as "webm" | "mp4")}><option value="webm">WebM (fastest)</option><option value="mp4">MP4 (FFmpeg WebAssembly)</option></select></label>
+            <label>Resolution<select value={exportSize} disabled={exporting} onChange={(event) => setExportSize(event.target.value as "720p" | "1080p")}><option value="720p">720p</option><option value="1080p">1080p</option></select></label>
+            <label>Frame rate<select value={exportFps} disabled={exporting} onChange={(event) => setExportFps(Number(event.target.value) as 30 | 60)}><option value={30}>30 fps</option><option value={60}>60 fps</option></select></label>
+            <label>Quality<select value={exportQuality} disabled={exporting} onChange={(event) => setExportQuality(event.target.value as "standard" | "high")}><option value="standard">Standard</option><option value="high">High</option></select></label>
+          </div>
+          <p className="vs-export-note">Rendering runs in this browser. Keep this tab open until the download starts. Longer projects may take several minutes and use significant memory.</p>
+          {(exporting || exportProgress > 0) && <div className="vs-export-progress"><div><b>{exportMessage}</b><span>{exportProgress}%</span></div><progress max="100" value={exportProgress} /></div>}
+          <div className="vs-export-actions"><button type="button" className="vs-cancel-export" disabled={exporting} onClick={() => setExportOpen(false)}>Cancel</button><button type="button" className="vs-export-start" disabled={exporting || project.clips.length === 0} onClick={() => void startExport()}>{exporting ? "Rendering…" : exportProgress === 100 ? "Export again" : "Start export"} <Download size={15} /></button></div>
+        </section>
+      </div>}
     </section>
   );
 }
