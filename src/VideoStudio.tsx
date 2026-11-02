@@ -475,7 +475,12 @@ async function renderTimeline(project: Project, media: Media[], options: ExportO
           const sw = source instanceof HTMLVideoElement ? source.videoWidth : source.naturalWidth;
           const sh = source instanceof HTMLVideoElement ? source.videoHeight : source.naturalHeight;
           if (sw && sh) { const scale = Math.max(canvas.width / sw, canvas.height / sh); const w = sw * scale, h = sh * scale; ctx.drawImage(source, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h); }
-        } else { ctx.fillStyle = track.name.toLowerCase().includes("overlay") ? "#24563a" : "#183d2b"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+        } else {
+          const colors = (asset.gradient?.match(/#[0-9a-f]{3,8}/gi) ?? ["#183d2b", "#071a10"]);
+          const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+          colors.forEach((color, index) => gradient.addColorStop(colors.length === 1 ? 0 : index / (colors.length - 1), color));
+          ctx.fillStyle = gradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
         ctx.filter = "none"; ctx.restore();
       });
       titles.filter((clip) => time >= clip.start && time < clip.start + clip.duration).forEach((clip) => {
