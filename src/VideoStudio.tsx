@@ -458,7 +458,6 @@ async function renderTimeline(project: Project, media: Media[], options: ExportO
       ctx.fillStyle = "#07150d"; ctx.fillRect(0, 0, canvas.width, canvas.height);
       visuals.filter((clip) => time >= clip.start && time < clip.start + clip.duration).forEach((clip) => {
         const asset = mediaById.get(clip.mediaId!)!;
-        const track = project.tracks.find((entry) => entry.id === clip.trackId)!;
         const local = clip.inPoint + time - clip.start;
         ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, clip.opacity));
         ctx.filter = "brightness(" + (clip.brightness ?? 100) + "%) contrast(" + (clip.contrast ?? 100) + "%) saturate(" + (clip.saturation ?? 100) + "%)";
