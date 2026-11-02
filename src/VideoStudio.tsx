@@ -54,6 +54,11 @@ type Clip = {
   duration: number;
   volume: number;
   opacity: number;
+  brightness?: number;
+  contrast?: number;
+  saturation?: number;
+  scale?: number;
+  rotation?: number;
   text?: string;
   titleStyle?: TitleStyle;
 };
@@ -369,7 +374,7 @@ function MediaLayer({ clip, media, time, playing, muted }: {
     }
   }, [local, playing, muted, clip.volume]);
 
-  const style: CSSProperties = { opacity: clip.opacity };
+  const style: CSSProperties = { opacity: clip.opacity, filter: "brightness(" + (clip.brightness ?? 100) + "%) contrast(" + (clip.contrast ?? 100) + "%) saturate(" + (clip.saturation ?? 100) + "%)", transform: "scale(" + ((clip.scale ?? 100) / 100) + ") rotate(" + (clip.rotation ?? 0) + "deg)" };
   if (media.kind === "video") {
     return <video ref={setElement} className="vs-layer" style={style} src={media.url} playsInline preload="auto" />;
   }
@@ -456,6 +461,12 @@ async function renderTimeline(project: Project, media: Media[], options: ExportO
         const track = project.tracks.find((entry) => entry.id === clip.trackId)!;
         const local = clip.inPoint + time - clip.start;
         ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, clip.opacity));
+        ctx.filter = "brightness(" + (clip.brightness ?? 100) + "%) contrast(" + (clip.contrast ?? 100) + "%) saturate(" + (clip.saturation ?? 100) + "%)";
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(((clip.rotation ?? 0) * Math.PI) / 180);
+        const clipScale = (clip.scale ?? 100) / 100;
+        ctx.scale(clipScale, clipScale);
+        ctx.translate(-canvas.width / 2, -canvas.height / 2);
         const source = asset.kind === "image" ? imageCache.get(asset.id) : videoCache.get(asset.id);
         if (source) {
           if (source instanceof HTMLVideoElement && Math.abs(source.currentTime - local) > 0.12) {
@@ -465,7 +476,7 @@ async function renderTimeline(project: Project, media: Media[], options: ExportO
           const sh = source instanceof HTMLVideoElement ? source.videoHeight : source.naturalHeight;
           if (sw && sh) { const scale = Math.max(canvas.width / sw, canvas.height / sh); const w = sw * scale, h = sh * scale; ctx.drawImage(source, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h); }
         } else { ctx.fillStyle = track.name.toLowerCase().includes("overlay") ? "#24563a" : "#183d2b"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-        ctx.restore();
+        ctx.filter = "none"; ctx.restore();
       });
       titles.filter((clip) => time >= clip.start && time < clip.start + clip.duration).forEach((clip) => {
         ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, clip.opacity)); ctx.fillStyle = "#fff"; ctx.shadowColor = "rgba(0,0,0,.65)"; ctx.shadowBlur = 18;
@@ -1085,6 +1096,13 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
                   <input type="range" min={0} max={1} step={0.01} value={selected.opacity} onChange={(e) => updateClip(selected.id, { opacity: Number(e.target.value) }, true)} onPointerUp={() => { editGuard.current = false; }} onBlur={() => { editGuard.current = false; }} />
                 </label>
               )}
+              {selectedMedia && selectedMedia.kind !== "audio" && selected.text === undefined && <>
+                <label className="vs-field">Brightness <output>{selected.brightness ?? 100}%</output><input type="range" min={0} max={200} value={selected.brightness ?? 100} onChange={(e) => updateClip(selected.id, { brightness: Number(e.target.value) }, true)} onPointerUp={() => { editGuard.current = false; }} onBlur={() => { editGuard.current = false; }} /></label>
+                <label className="vs-field">Contrast <output>{selected.contrast ?? 100}%</output><input type="range" min={0} max={200} value={selected.contrast ?? 100} onChange={(e) => updateClip(selected.id, { contrast: Number(e.target.value) }, true)} onPointerUp={() => { editGuard.current = false; }} onBlur={() => { editGuard.current = false; }} /></label>
+                <label className="vs-field">Saturation <output>{selected.saturation ?? 100}%</output><input type="range" min={0} max={200} value={selected.saturation ?? 100} onChange={(e) => updateClip(selected.id, { saturation: Number(e.target.value) }, true)} onPointerUp={() => { editGuard.current = false; }} onBlur={() => { editGuard.current = false; }} /></label>
+                <label className="vs-field">Scale <output>{selected.scale ?? 100}%</output><input type="range" min={25} max={200} value={selected.scale ?? 100} onChange={(e) => updateClip(selected.id, { scale: Number(e.target.value) }, true)} onPointerUp={() => { editGuard.current = false; }} onBlur={() => { editGuard.current = false; }} /></label>
+                <label className="vs-field">Rotation <output>{selected.rotation ?? 0}°</output><input type="range" min={-180} max={180} value={selected.rotation ?? 0} onChange={(e) => updateClip(selected.id, { rotation: Number(e.target.value) }, true)} onPointerUp={() => { editGuard.current = false; }} onBlur={() => { editGuard.current = false; }} /></label>
+              </>}
             </div>
           ) : (
             <div className="vs-fields">
