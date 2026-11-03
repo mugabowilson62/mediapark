@@ -214,3 +214,8 @@
 .vs-export-start{border:0;background:linear-gradient(100deg,#b8e99b,#63d39a);color:#082315}
 .vs-export-actions button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:520px){.vs-export-options{grid-template-columns:1fr}.vs-export-dialog{padding:18px}}
+
+/* Editing controls for title styling and clip transitions */
+.vs-field select{width:100%;min-height:36px;padding:7px 9px;border:1px solid var(--vs-line-strong);border-radius:8px;background:#10271a;color:var(--vs-text);font:500 12px "DM Sans",sans-serif}
+.vs-field select:focus,.vs-field input[type=color]:focus{outline:2px solid var(--vs-accent-2);outline-offset:2px}
+.vs-field input[type=color]{width:100%;height:34px;padding:3px;border:1px solid var(--vs-line-strong);border-radius:8px;background:#10271a}
