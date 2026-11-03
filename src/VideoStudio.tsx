@@ -59,8 +59,15 @@ type Clip = {
   saturation?: number;
   scale?: number;
   rotation?: number;
+  fadeIn?: number;
+  fadeOut?: number;
+  transition?: "none" | "fade" | "cross-dissolve";
   text?: string;
   titleStyle?: TitleStyle;
+  fontFamily?: string;
+  fontSize?: number;
+  textColor?: string;
+  textBackground?: string;
 };
 
 type Project = { tracks: Track[]; clips: Clip[] };
@@ -374,7 +381,10 @@ function MediaLayer({ clip, media, time, playing, muted }: {
     }
   }, [local, playing, muted, clip.volume]);
 
-  const style: CSSProperties = { opacity: clip.opacity, filter: "brightness(" + (clip.brightness ?? 100) + "%) contrast(" + (clip.contrast ?? 100) + "%) saturate(" + (clip.saturation ?? 100) + "%)", transform: "scale(" + ((clip.scale ?? 100) / 100) + ") rotate(" + (clip.rotation ?? 0) + "deg)" };
+  const fadeIn = clip.fadeIn ?? 0;
+  const fadeOut = clip.fadeOut ?? 0;
+  const fadeOpacity = Math.min(fadeIn > 0 ? clamp((time - clip.start) / fadeIn, 0, 1) : 1, fadeOut > 0 ? clamp((clip.start + clip.duration - time) / fadeOut, 0, 1) : 1);
+  const style: CSSProperties = { opacity: clip.opacity * fadeOpacity, filter: "brightness(" + (clip.brightness ?? 100) + "%) contrast(" + (clip.contrast ?? 100) + "%) saturate(" + (clip.saturation ?? 100) + "%)", transform: "scale(" + ((clip.scale ?? 100) / 100) + ") rotate(" + (clip.rotation ?? 0) + "deg)" };
   if (media.kind === "video") {
     return <video ref={setElement} className="vs-layer" style={style} src={media.url} playsInline preload="auto" />;
   }
@@ -459,7 +469,10 @@ async function renderTimeline(project: Project, media: Media[], options: ExportO
       visuals.filter((clip) => time >= clip.start && time < clip.start + clip.duration).forEach((clip) => {
         const asset = mediaById.get(clip.mediaId!)!;
         const local = clip.inPoint + time - clip.start;
-        ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, clip.opacity));
+        const fadeIn = clip.fadeIn ?? 0, fadeOut = clip.fadeOut ?? 0;
+        const fadeOpacity = Math.min(fadeIn > 0 ? clamp((time - clip.start) / fadeIn, 0, 1) : 1, fadeOut > 0 ? clamp((clip.start + clip.duration - time) / fadeOut, 0, 1) : 1);
+        const overlap = visuals.filter((other) => other.trackId === clip.trackId && other.id !== clip.id && other.start < clip.start && other.start + other.duration > clip.start).reduce((max, other) => Math.max(max, Math.min(1, (other.start + other.duration - time) / Math.max(0.001, other.start + other.duration - clip.start))), 0);
+        ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, clip.opacity * fadeOpacity * (clip.transition === "cross-dissolve" ? 1 - overlap : 1)));
         ctx.filter = "brightness(" + (clip.brightness ?? 100) + "%) contrast(" + (clip.contrast ?? 100) + "%) saturate(" + (clip.saturation ?? 100) + "%)";
         ctx.translate(canvas.width / 2, canvas.height / 2);
         ctx.rotate(((clip.rotation ?? 0) * Math.PI) / 180);
@@ -483,12 +496,14 @@ async function renderTimeline(project: Project, media: Media[], options: ExportO
         ctx.filter = "none"; ctx.restore();
       });
       titles.filter((clip) => time >= clip.start && time < clip.start + clip.duration).forEach((clip) => {
-        ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, clip.opacity)); ctx.fillStyle = "#fff"; ctx.shadowColor = "rgba(0,0,0,.65)"; ctx.shadowBlur = 18;
-        const size = Math.round(canvas.height * (clip.titleStyle === "subtitle" ? 0.045 : 0.075));
-        ctx.font = "800 " + size + "px Arial, sans-serif"; ctx.textAlign = clip.titleStyle === "lower" ? "left" : "center";
+        const fadeIn = clip.fadeIn ?? 0, fadeOut = clip.fadeOut ?? 0;
+        const alpha = Math.min(fadeIn > 0 ? clamp((time - clip.start) / fadeIn, 0, 1) : 1, fadeOut > 0 ? clamp((clip.start + clip.duration - time) / fadeOut, 0, 1) : 1);
+        ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, clip.opacity * alpha)); ctx.fillStyle = clip.textColor ?? "#ffffff"; ctx.shadowColor = "rgba(0,0,0,.65)"; ctx.shadowBlur = 18;
+        const size = Math.round(canvas.height * ((clip.fontSize ?? (clip.titleStyle === "subtitle" ? 4.5 : 7.5)) / 100));
+        ctx.font = "800 " + size + "px " + (clip.fontFamily ?? "Arial") + ", sans-serif"; ctx.textAlign = clip.titleStyle === "lower" ? "left" : "center";
         const x = clip.titleStyle === "lower" ? canvas.width * 0.08 : canvas.width / 2;
         const y = clip.titleStyle === "lower" ? canvas.height * 0.86 : clip.titleStyle === "subtitle" ? canvas.height * 0.9 : canvas.height / 2;
-        if (clip.titleStyle === "subtitle") { const width = Math.min(canvas.width * 0.88, ctx.measureText(clip.text ?? "").width + 40); ctx.fillStyle = "rgba(0,0,0,.68)"; ctx.fillRect((canvas.width - width) / 2, y - size, width, size * 1.6); ctx.fillStyle = "#fff"; }
+        if (clip.titleStyle === "subtitle" || clip.textBackground) { const width = Math.min(canvas.width * 0.88, ctx.measureText(clip.text ?? "").width + 40); ctx.fillStyle = clip.textBackground ?? "rgba(0,0,0,.68)"; ctx.fillRect((canvas.width - width) / 2, y - size, width, size * 1.6); ctx.fillStyle = clip.textColor ?? "#ffffff"; }
         ctx.fillText(clip.text ?? "", x, y, canvas.width * 0.86); ctx.restore();
       });
     };
@@ -1052,7 +1067,7 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
                 <MediaLayer key={clip.id} clip={clip} media={item} time={playhead} playing={playing} muted={muted} />
               ))}
               {titleLayers.map((clip) => (
-                <div className={"vs-title-overlay " + (clip.titleStyle ?? "center")} style={{ opacity: clip.opacity }} key={clip.id}>
+                <div className={"vs-title-overlay " + (clip.titleStyle ?? "center")} style={{ opacity: clip.opacity * Math.min(clip.fadeIn ? clamp((playhead - clip.start) / clip.fadeIn, 0, 1) : 1, clip.fadeOut ? clamp((clip.start + clip.duration - playhead) / clip.fadeOut, 0, 1) : 1), color: clip.textColor ?? "#ffffff", fontFamily: clip.fontFamily ?? "Manrope", fontSize: (clip.fontSize ?? 7.5) + "cqw", background: clip.textBackground ?? undefined }} key={clip.id}>
                   <div className="vs-title-text">{clip.text}</div>
                 </div>
               ))}
@@ -1088,6 +1103,22 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
                       ))}
                     </div>
                   </div>
+                  <label className="vs-field">Font family
+                    <select value={selected.fontFamily ?? "Arial"} onChange={(e) => updateClip(selected.id, { fontFamily: e.target.value })}>
+                      <option value="Arial">Arial</option><option value="Manrope">Manrope</option><option value="Georgia">Georgia</option><option value="Impact">Impact</option><option value="Verdana">Verdana</option>
+                    </select>
+                  </label>
+                  <label className="vs-field">Text size <output>{selected.fontSize ?? 7.5}%</output>
+                    <input type="range" min={2} max={14} step={0.5} value={selected.fontSize ?? 7.5} onChange={(e) => updateClip(selected.id, { fontSize: Number(e.target.value) }, true)} onPointerUp={() => { editGuard.current = false; }} onBlur={() => { editGuard.current = false; }} />
+                  </label>
+                  <label className="vs-field">Text color
+                    <input type="color" value={selected.textColor ?? "#ffffff"} onChange={(e) => updateClip(selected.id, { textColor: e.target.value })} />
+                  </label>
+                  <label className="vs-field">Background
+                    <select value={selected.textBackground ?? "transparent"} onChange={(e) => updateClip(selected.id, { textBackground: e.target.value === "transparent" ? undefined : e.target.value })}>
+                      <option value="transparent">Transparent</option><option value="rgba(0,0,0,.68)">Dark</option><option value="rgba(15,70,40,.85)">Forest green</option><option value="rgba(255,255,255,.88)">Light</option>
+                    </select>
+                  </label>
                 </>
               )}
               {(selectedMedia?.kind === "video" || selectedMedia?.kind === "audio") && (
@@ -1095,6 +1126,15 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
                   <input type="range" min={0} max={1} step={0.01} value={selected.volume} onChange={(e) => updateClip(selected.id, { volume: Number(e.target.value) }, true)} onPointerUp={() => { editGuard.current = false; }} onBlur={() => { editGuard.current = false; }} />
                 </label>
               )}
+              {selectedMedia?.kind !== "audio" && selected.text === undefined && <>
+                <label className="vs-field">Fade in <output>{(selected.fadeIn ?? 0).toFixed(1)}s</output><input type="range" min={0} max={3} step={0.1} value={selected.fadeIn ?? 0} onChange={(e) => updateClip(selected.id, { fadeIn: Number(e.target.value) }, true)} onPointerUp={() => { editGuard.current = false; }} onBlur={() => { editGuard.current = false; }} /></label>
+                <label className="vs-field">Fade out <output>{(selected.fadeOut ?? 0).toFixed(1)}s</output><input type="range" min={0} max={3} step={0.1} value={selected.fadeOut ?? 0} onChange={(e) => updateClip(selected.id, { fadeOut: Number(e.target.value) }, true)} onPointerUp={() => { editGuard.current = false; }} onBlur={() => { editGuard.current = false; }} /></label>
+                <label className="vs-field">Transition
+                  <select value={selected.transition ?? "none"} onChange={(e) => updateClip(selected.id, { transition: e.target.value as Clip["transition"] })}>
+                    <option value="none">None</option><option value="fade">Fade</option><option value="cross-dissolve">Cross dissolve (overlap)</option>
+                  </select>
+                </label>
+              </>}
               {selectedMedia?.kind !== "audio" && (
                 <label className="vs-field">Opacity <output>{Math.round(selected.opacity * 100)}%</output>
                   <input type="range" min={0} max={1} step={0.01} value={selected.opacity} onChange={(e) => updateClip(selected.id, { opacity: Number(e.target.value) }, true)} onPointerUp={() => { editGuard.current = false; }} onBlur={() => { editGuard.current = false; }} />
