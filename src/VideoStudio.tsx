@@ -439,7 +439,7 @@ async function renderTimeline(project: Project, media: Media[], options: ExportO
     const audioClips = project.clips.filter((clip) => {
       const track = project.tracks.find((item) => item.id === clip.trackId);
       const asset = clip.mediaId ? mediaById.get(clip.mediaId) : undefined;
-      return track && !track.hidden && !track.muted && track.kind === "audio" && asset?.url;
+      return track && !track.hidden && !track.muted && (track.kind === "audio" || asset?.kind === "video") && asset?.url;
     });
     const buffers = await Promise.all(audioClips.map(async (clip) => {
       const asset = mediaById.get(clip.mediaId!)!;
@@ -471,7 +471,7 @@ async function renderTimeline(project: Project, media: Media[], options: ExportO
     });
     const draw = (time: number) => {
       ctx.fillStyle = "#07150d"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-      visuals.filter((clip) => time >= clip.start && time < clip.start + clip.duration).forEach((clip) => {
+      visuals.filter((clip) => time >= clip.start && time < clip.start + clip.duration).sort((a, b) => a.start - b.start).forEach((clip) => {
         const asset = mediaById.get(clip.mediaId!)!;
         const local = clip.inPoint + time - clip.start;
         const fadeIn = clip.fadeIn ?? 0, fadeOut = clip.fadeOut ?? 0;
@@ -1065,9 +1065,13 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
         <div className="vs-panel vs-preview" aria-label="Preview">
           <div className="vs-stage">
             <div className="vs-frame" style={{ "--ratio": ASPECTS[aspect] } as CSSProperties}>
-              {visualLayers.map(({ clip, media: item }) => (
-                <MediaLayer key={clip.id} clip={clip} media={item} time={playhead} playing={playing} muted={videoMuted(clip)} />
-              ))}
+              {visualLayers.map(({ clip, media: item }) => {
+                const incomingOverlap = clip.transition === "cross-dissolve"
+                  ? visualLayers.filter((entry) => entry.clip.trackId === clip.trackId && entry.clip.start < clip.start && entry.clip.start + entry.clip.duration > clip.start)
+                    .reduce((value, entry) => Math.max(value, clamp((playhead - clip.start) / Math.max(0.001, entry.clip.start + entry.clip.duration - clip.start), 0, 1)), 0)
+                  : 1;
+                return <MediaLayer key={clip.id} clip={{ ...clip, opacity: clip.opacity * incomingOverlap }} media={item} time={playhead} playing={playing} muted={videoMuted(clip)} />;
+              })}
               {audioLayers.map(({ clip, media: item, muted }) => (
                 <MediaLayer key={clip.id} clip={clip} media={item} time={playhead} playing={playing} muted={muted} />
               ))}
