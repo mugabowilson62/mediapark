@@ -190,3 +190,32 @@
 @media(prefers-reduced-motion:reduce){.vs *{transition:none!important}}
 
 @media(max-width:440px){.breadcrumbs>span,.breadcrumbs>svg{display:none}}
+
+
+/* Export dialog and render progress */
+.vs-export-scrim{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(1,8,4,.78);backdrop-filter:blur(8px)}
+.vs-export-dialog{width:min(100%,520px);padding:22px;border:1px solid rgba(184,233,155,.28);border-radius:18px;background:#0a1b11;color:#e9f5e9;box-shadow:0 28px 90px rgba(0,0,0,.6)}
+.vs-export-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+.vs-export-kicker{color:#92b098;font-size:10px;font-weight:800;letter-spacing:1.5px}
+.vs-export-dialog h3{margin:5px 0 0;font:800 23px Manrope,sans-serif;letter-spacing:-.5px}
+.vs-export-options{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.vs-export-options label{display:grid;gap:7px;color:#92b098;font-size:11px;font-weight:700}
+.vs-export-options select{width:100%;height:40px;padding:0 10px;border:1px solid rgba(198,235,205,.2);border-radius:9px;background:#10271a;color:#e9f5e9;font:600 12px "DM Sans",sans-serif}
+.vs-export-note{margin:17px 0;color:#92b098;font-size:11px;line-height:1.65}
+.vs-export-progress{margin:18px 0}
+.vs-export-progress>div{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px;color:#b8e99b;font-size:11px}
+.vs-export-progress b{font-weight:700}
+.vs-export-progress progress{width:100%;height:9px;overflow:hidden;border:0;border-radius:99px;background:#1b3827;accent-color:#8fe0a4}
+.vs-export-progress progress::-webkit-progress-bar{background:#1b3827;border-radius:99px}
+.vs-export-progress progress::-webkit-progress-value{background:linear-gradient(90deg,#b8e99b,#63d39a);border-radius:99px}
+.vs-export-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}
+.vs-export-actions button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:39px;padding:0 15px;border-radius:9px;font-size:12px;font-weight:800}
+.vs-cancel-export{border:1px solid rgba(198,235,205,.2);background:transparent;color:#c4d8c7}
+.vs-export-start{border:0;background:linear-gradient(100deg,#b8e99b,#63d39a);color:#082315}
+.vs-export-actions button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:520px){.vs-export-options{grid-template-columns:1fr}.vs-export-dialog{padding:18px}}
+
+/* Editing controls for title styling and clip transitions */
+.vs-field select{width:100%;min-height:36px;padding:7px 9px;border:1px solid var(--vs-line-strong);border-radius:8px;background:#10271a;color:var(--vs-text);font:500 12px "DM Sans",sans-serif}
+.vs-field select:focus,.vs-field input[type=color]:focus{outline:2px solid var(--vs-accent-2);outline-offset:2px}
+.vs-field input[type=color]{width:100%;height:34px;padding:3px;border:1px solid var(--vs-line-strong);border-radius:8px;background:#10271a}
