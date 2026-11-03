@@ -459,7 +459,12 @@ async function renderTimeline(project: Project, media: Media[], options: ExportO
     const audioStart = audioContext.currentTime + 0.15;
     buffers.forEach(({ clip, buffer }) => {
       const source = audioContext.createBufferSource(); const gain = audioContext.createGain();
-      source.buffer = buffer; gain.gain.value = Math.max(0, Math.min(1, clip.volume)); source.connect(gain).connect(audioDestination);
+      source.buffer = buffer; gain.gain.setValueAtTime(Math.max(0, Math.min(1, clip.volume)), audioStart + clip.start);
+      const fadeIn = Math.min(Math.max(0, clip.fadeIn ?? 0), clip.duration);
+      const fadeOut = Math.min(Math.max(0, clip.fadeOut ?? 0), clip.duration);
+      if (fadeIn > 0) { gain.gain.setValueAtTime(0, audioStart + clip.start); gain.gain.linearRampToValueAtTime(Math.max(0, Math.min(1, clip.volume)), audioStart + clip.start + fadeIn); }
+      if (fadeOut > 0) { gain.gain.setValueAtTime(Math.max(0, Math.min(1, clip.volume)), audioStart + clip.start + clip.duration - fadeOut); gain.gain.linearRampToValueAtTime(0, audioStart + clip.start + clip.duration); }
+      source.connect(gain).connect(audioDestination);
       const offset = Math.max(0, clip.inPoint); const length = Math.min(clip.duration, buffer.duration - offset);
       if (length > 0) source.start(audioStart + clip.start, offset, length);
       scheduled.push(source);
@@ -1067,8 +1072,8 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
                 <MediaLayer key={clip.id} clip={clip} media={item} time={playhead} playing={playing} muted={muted} />
               ))}
               {titleLayers.map((clip) => (
-                <div className={"vs-title-overlay " + (clip.titleStyle ?? "center")} style={{ opacity: clip.opacity * Math.min(clip.fadeIn ? clamp((playhead - clip.start) / clip.fadeIn, 0, 1) : 1, clip.fadeOut ? clamp((clip.start + clip.duration - playhead) / clip.fadeOut, 0, 1) : 1), color: clip.textColor ?? "#ffffff", fontFamily: clip.fontFamily ?? "Manrope", fontSize: (clip.fontSize ?? 7.5) + "cqw", background: clip.textBackground ?? undefined }} key={clip.id}>
-                  <div className="vs-title-text">{clip.text}</div>
+                <div className={"vs-title-overlay " + (clip.titleStyle ?? "center")} style={{ opacity: clip.opacity * Math.min(clip.fadeIn ? clamp((playhead - clip.start) / clip.fadeIn, 0, 1) : 1, clip.fadeOut ? clamp((clip.start + clip.duration - playhead) / clip.fadeOut, 0, 1) : 1), color: clip.textColor ?? "#ffffff", fontFamily: clip.fontFamily ?? "Manrope", fontSize: (clip.fontSize ?? 7.5) + "cqw" }} key={clip.id}>
+                  <div className="vs-title-text" style={{ background: clip.textBackground ?? undefined, padding: clip.textBackground ? "0.7cqw 1.8cqw" : undefined, borderRadius: clip.textBackground ? "0.8cqw" : undefined }}>{clip.text}</div>
                 </div>
               ))}
               {visualLayers.length === 0 && titleLayers.length === 0 && (
