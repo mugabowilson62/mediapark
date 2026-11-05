@@ -15,6 +15,8 @@ import {
   Volume2, VolumeX, ZoomIn, ZoomOut, type LucideIcon,
 } from "lucide-react";
 import "./videostudio.css";
+import { FFmpeg } from "@ffmpeg/ffmpeg";
+import { toBlobURL } from "@ffmpeg/util";
 
 /* ------------------------------------------------------------------ */
 /* Types and constants                                                 */
@@ -386,7 +388,7 @@ function MediaLayer({ clip, media, time, playing, muted }: {
 /* Studio                                                              */
 /* ------------------------------------------------------------------ */
 
-export default function VideoStudio({ onExport }: { onExport: () => void }) {
+export default function VideoStudio() {
   const [media, setMedia] = useState<Media[]>(initialMedia);
   const [project, setProject] = useState<Project>(initialProject);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -398,6 +400,8 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
   const [panelTab, setPanelTab] = useState<"media" | "titles">("media");
   const [projectName, setProjectName] = useState("Kigali at dawn");
   const [status, setStatus] = useState("Ready. Click a clip in the media panel to add it.");
+  const [exporting, setExporting] = useState(false);
+  const ffmpegRef = useRef<FFmpeg | null>(null);
   const [, setHistoryVersion] = useState(0);
 
   const projectRef = useRef(project);
@@ -426,6 +430,108 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
   totalRef.current = total;
   const timelineSeconds = Math.max(total + 10, 24);
   const trackById = useMemo(() => new Map(project.tracks.map((t) => [t.id, t])), [project.tracks]);
+
+  /* ---- local FFmpeg.wasm export ---- */
+
+  const exportVideo = async () => {
+    if (exporting) return;
+    const timeline = projectRef.current;
+    const end = timeline.clips.reduce((value, clip) => Math.max(value, clip.start + clip.duration), 0);
+    if (!end || timeline.clips.length === 0) {
+      flash("Add at least one clip before exporting.");
+      return;
+    }
+    const exportable = timeline.clips.filter((clip) => {
+      const item = clip.mediaId ? mediaMap.get(clip.mediaId) : undefined;
+      return item && (item.kind === "video" || item.kind === "image" || item.kind === "audio");
+    });
+    if (!exportable.some((clip) => {
+      const item = clip.mediaId ? mediaMap.get(clip.mediaId) : undefined;
+      return item && (item.kind === "video" || item.kind === "image");
+    })) {
+      flash("Add a video or image clip to export.");
+      return;
+    }
+    setExporting(true);
+    setPlaying(false);
+    try {
+      flash("Loading FFmpeg.wasm…");
+      let ffmpeg = ffmpegRef.current;
+      if (!ffmpeg) {
+        ffmpeg = new FFmpeg();
+        ffmpeg.on("progress", ({ progress }) => {
+          setStatus("Rendering video… " + Math.round(clamp(progress, 0, 1) * 100) + "%");
+        });
+        const base = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
+        await ffmpeg.load({
+          coreURL: await toBlobURL(base + "/ffmpeg-core.js", "text/javascript"),
+          wasmURL: await toBlobURL(base + "/ffmpeg-core.wasm", "application/wasm"),
+        });
+        ffmpegRef.current = ffmpeg;
+      }
+      const args: string[] = ["-f", "lavfi", "-i", "color=c=black:s=1280x720:r=30:d=" + end.toFixed(3)];
+      const visual: Array<{ clip: Clip; input: number }> = [];
+      const audio: Array<{ clip: Clip; input: number }> = [];
+      let inputIndex = 1;
+      for (const clip of exportable) {
+        const item = mediaMap.get(clip.mediaId!)!;
+        if (!item.url) continue;
+        const response = await fetch(item.url);
+        if (!response.ok) throw new Error("Could not read " + item.name);
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        const mime = response.headers.get("content-type") || "";
+        const extension = mime.includes("png") ? "png" : mime.includes("jpeg") ? "jpg" : mime.includes("webp") ? "webp" : mime.includes("wav") ? "wav" : mime.includes("mpeg") ? "mp3" : item.kind === "video" ? "mp4" : item.kind === "audio" ? "mp3" : "png";
+        const filename = "asset-" + inputIndex + "." + extension;
+        await ffmpeg.writeFile(filename, bytes);
+        if (item.kind === "image") args.push("-loop", "1", "-t", clip.duration.toFixed(3), "-i", filename);
+        else args.push("-ss", String(clip.inPoint), "-t", String(clip.duration), "-i", filename);
+        if (item.kind === "audio") audio.push({ clip, input: inputIndex });
+        else visual.push({ clip, input: inputIndex });
+        inputIndex++;
+      }
+      if (visual.length === 0) throw new Error("No readable video or image clips were found.");
+      const filters: string[] = [];
+      let current = "base";
+      visual.forEach(({ clip, input }, index) => {
+        const layer = "layer" + index;
+        const next = "mix" + index;
+        filters.push("[" + input + ":v]setpts=PTS-STARTPTS,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,format=rgba,colorchannelmixer=aa=" + clamp(clip.opacity, 0, 1) + "[" + layer + "]");
+        filters.push("[" + current + "][" + layer + "]overlay=0:0:eof_action=pass:enable='between(t," + clip.start.toFixed(3) + "," + (clip.start + clip.duration).toFixed(3) + ")'[" + next + "]");
+        current = next;
+      });
+      filters.push("[" + current + "]format=yuv420p[outv]");
+      if (audio.length) {
+        audio.forEach(({ clip, input }, index) => {
+          filters.push("[" + input + ":a]asetpts=PTS-STARTPTS,volume=" + clamp(clip.volume, 0, 1) + ",adelay=" + Math.round(clip.start * 1000) + "|" + Math.round(clip.start * 1000) + "[aud" + index + "]");
+        });
+        filters.push(audio.map((_, index) => "[aud" + index + "]").join("") + "amix=inputs=" + audio.length + ":duration=longest:dropout_transition=0[aout]");
+      }
+      args.push("-filter_complex", filters.join(";"), "-map", "[outv]");
+      if (audio.length) args.push("-map", "[aout]");
+      args.push("-t", end.toFixed(3), "-r", "30", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23");
+      if (audio.length) args.push("-c:a", "aac", "-b:a", "160k");
+      args.push("-movflags", "+faststart", "mediapark-export.mp4");
+      flash("Rendering your edited timeline in this browser…");
+      const result = await ffmpeg.exec(args);
+      if (result !== 0) throw new Error("FFmpeg could not render this project. Check that your media formats are supported.");
+      const data = await ffmpeg.readFile("mediapark-export.mp4");
+      const blob = new Blob([data as Uint8Array], { type: "video/mp4" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = (projectName.trim() || "mediapark-video").replace(/[^a-z0-9-_]+/gi, "-") + ".mp4";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      flash("Export complete. Your MP4 download has started.");
+    } catch (error) {
+      console.error("MediaPark export failed", error);
+      flash(error instanceof Error ? error.message : "Export failed. Try a shorter or smaller source video.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   /* ---- status + history ---- */
 
@@ -832,7 +938,7 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
         <div className="vs-head-meta">
           <span>1080p</span><span>{FPS} fps</span><span>{aspect}</span>
         </div>
-        <button className="vs-export" onClick={onExport}><Download size={16} /> Export video</button>
+        <button className="vs-export" onClick={exportVideo} disabled={exporting || project.clips.length === 0}><Download size={16} /> {exporting ? "Rendering…" : "Export MP4"}</button>
       </header>
 
       <div className="vs-main">
