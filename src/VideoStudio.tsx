@@ -157,7 +157,7 @@ function MediaLayer({ clip, media, time, playing, muted, asAudio }: {
 function ExportDialog({ project, media, aspect, name, onClose }: {
   project: Project; media: Map<string, Media>; aspect: Aspect; name: string; onClose: () => void;
 }) {
-  const [resolution, setResolution] = useState(720);
+  const [resolution, setResolution] = useState(480);
   const [phase, setPhase] = useState<"idle" | "rendering" | "done" | "error">("idle");
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState("");
@@ -193,7 +193,7 @@ function ExportDialog({ project, media, aspect, name, onClose }: {
     setPhase("rendering");
     setProgress(0);
     try {
-      const output = await exportVideo({ project, media, aspect, resolution, fps: 30, signal: controller.signal, onProgress: setProgress });
+      const output = await exportVideo({ project, media, aspect, resolution, fps: 24, signal: controller.signal, onProgress: setProgress });
       if (output.blob.size === 0) throw new Error("The recording came out empty. Try again.");
       const url = URL.createObjectURL(output.blob);
       urlRef.current = url;
