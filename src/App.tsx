@@ -219,7 +219,7 @@ function App() {
 
 
           {activeNav === "Video studio" ? (
-            <VideoStudio onExport={() => showNotice("Video export")} />
+            <VideoStudio />
           ) : (<>
           <section className="gahi-promo" aria-labelledby="gahi-promo-title">
             <div className="gahi-promo-copy">

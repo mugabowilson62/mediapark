@@ -17,15 +17,17 @@ The responsive frontend includes:
 
 ## Video studio
 
-The Video studio is a working, browser-only editor modelled on professional tablet and desktop editors: a media panel, a live preview, an inspector, a transport bar, a multi-track timeline and a bottom toolbar.
+A working, browser-only video editor. It starts empty: you bring your own video, music and photos.
 
-- **Import** video, audio and images from your device (files never leave the browser). Built-in sample clips and a generated ambient pad let you try it straight away.
-- **Timeline** with Titles, Overlay, Video, Audio and Music tracks. Drag clips to move them (also between tracks of the same kind), drag clip edges to trim, and snap to the playhead and to other clips.
-- **Tools:** split at the playhead, duplicate, delete, undo and redo, reset, per-track hide/mute and lock, timeline zoom, and 16:9, 9:16 and 1:1 frame shapes.
-- **Titles:** center title, lower third and subtitle, with editable text. Volume and opacity are set per clip in the inspector.
-- **Shortcuts:** `Space` play or pause, `S` split, `Delete` remove, `←` `→` step one frame (hold `Shift` for one second), `Home` and `End`, `Ctrl/⌘ + Z` undo, `Ctrl/⌘ + D` duplicate.
-
-Exporting a finished video file is not connected yet: the **Export video** button shows the same prototype notice as other future services. Projects are not saved between visits yet.
+- **Import** by button, by dragging files anywhere into the window, or by dropping them straight onto a track. Drag items from the media panel onto the timeline, or click them to add at the playhead.
+- **Timeline** with Text, Video and Audio tracks. Add more video and audio tracks with the + buttons (up to 4 of each). Drag clips to move them (also between tracks of the same kind), drag their edges to trim, and snap to the playhead and other clips. Real video thumbnails and audio waveforms are drawn on the clips.
+- **Editing:** split, duplicate, delete (Shift+Delete closes the gap), detach audio from a video, undo and redo, zoom (slider, +/-, Ctrl+scroll, fit to window), hide, mute and lock tracks.
+- **Per clip:** name, speed (0.25x to 4x), volume, opacity, fade in and out, fit or fill, zoom.
+- **Text:** center title, lower third and subtitle, with your own text, colour and size.
+- **Frame shapes:** 16:9, 9:16 and 1:1.
+- **Export** renders the timeline (video, photos, text, mixed audio, fades, speed) to a real MP4 or WebM file at 480p, 720p or 1080p, and lets you preview and download it. Export runs in real time, so keep the tab open while it works.
+- **Autosave:** the project and imported files are kept in this browser (IndexedDB). Nothing is uploaded anywhere.
+- **Shortcuts:** `Space` play or pause, `S` split, `Delete` remove, `Shift+Delete` remove and close the gap, `←` `→` step one frame (`Shift` for one second), `Home` and `End`, `Ctrl/⌘+Z` undo, `Ctrl/⌘+D` duplicate, `+` `-` zoom.
 
 This is still a **frontend prototype**. Likes and saved posts are stored in the current browser using `localStorage`; they are not synced across accounts or devices. Search is a local preview filter, not a backend search service. AI generation, media processing, uploads, live broadcasts, games, accounts, messaging and calling are not connected yet. Buttons for those future services show a prototype notice.
 
@@ -55,7 +57,8 @@ npm run build
 ## Project structure
 
 - `src/App.tsx` — page layout and frontend interactions
-- `src/VideoStudio.tsx` — the video editor (state, timeline, preview, tools)
+- `src/VideoStudio.tsx` — the video editor interface (timeline, preview, inspector)
+- `src/studio/` — editor logic: `types.ts`, `utils.ts` (import, thumbnails, waveforms), `storage.ts` (autosave), `exporter.ts` (video export)
 - `src/videostudio.css` — video editor styling
 - `src/index.css` — visual design and responsive styling
 - `src/main.tsx` — React entry point

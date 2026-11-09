@@ -1,331 +1,91 @@
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type CSSProperties,
+  useCallback, useEffect, useMemo, useRef, useState,
+  type ChangeEvent, type CSSProperties, type DragEvent as ReactDragEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
-  AudioLines, Clapperboard, Copy, Download, Eye, EyeOff, Film, Image as ImageIcon,
-  Lock, Magnet, Music2, Pause, Play, Plus, Redo2, RotateCcw, Scissors, SkipBack,
-  SkipForward, StepBack, StepForward, Trash2, Type, Undo2, Unlock, Upload,
-  Volume2, VolumeX, ZoomIn, ZoomOut, type LucideIcon,
+  AudioLines, Check, Clapperboard, Copy, Download, Eye, EyeOff, FilePlus, Film,
+  Image as ImageIcon, Lock, Magnet, Maximize2, Music2, Pause, Play, Plus, Redo2,
+  RotateCcw, Scissors, SkipBack, SkipForward, StepBack, StepForward, Trash2, Type,
+  Undo2, Unlink, Unlock, Upload, Volume2, VolumeX, X, ZoomIn, ZoomOut, type LucideIcon,
 } from "lucide-react";
 import "./videostudio.css";
+import {
+  ASPECTS, type Aspect, type Clip, type Media, type Project, type Track, type TrackKind, type TitleStyle,
+} from "./studio/types";
+import {
+  FPS, MIN_CLIP, buildStrip, clamp, computePeaks, defaultTracks, fadeFactor, freeStart, isFree,
+  newClip, placeClip, readMedia, seconds1, shortTime, timecode, uid,
+} from "./studio/utils";
+import { clearAll, deleteMedia, loadAll, saveMedia, saveProject } from "./studio/storage";
+import { exportSupported, exportVideo, frameSize } from "./studio/exporter";
 
 /* ------------------------------------------------------------------ */
-/* Types and constants                                                 */
+/* Constants                                                           */
 /* ------------------------------------------------------------------ */
 
-type MediaKind = "video" | "audio" | "image" | "color";
-type TrackKind = "title" | "video" | "audio";
-type TitleStyle = "center" | "lower" | "subtitle";
-type Aspect = "16:9" | "9:16" | "1:1";
-
-type Media = {
-  id: string;
-  name: string;
-  kind: MediaKind;
-  duration: number;
-  url?: string;
-  thumb?: string;
-  gradient?: string;
-};
-
-type Track = {
-  id: string;
-  name: string;
-  kind: TrackKind;
-  muted: boolean;
-  hidden: boolean;
-  locked: boolean;
-};
-
-type Clip = {
-  id: string;
-  trackId: string;
-  mediaId?: string;
-  label: string;
-  start: number;
-  inPoint: number;
-  duration: number;
-  volume: number;
-  opacity: number;
-  text?: string;
-  titleStyle?: TitleStyle;
-};
-
-type Project = { tracks: Track[]; clips: Clip[] };
-
-type Drag = {
-  mode: "move" | "left" | "right";
-  id: string;
-  x0: number;
-  y0: number;
-  orig: Clip;
-  moved: boolean;
-};
-
-type Actions = {
-  togglePlay: () => void;
-  split: () => void;
-  duplicate: () => void;
-  remove: () => void;
-  undo: () => void;
-  redo: () => void;
-  step: (seconds: number) => void;
-  seek: (time: number) => void;
-  seekEnd: () => void;
-};
-
-const FPS = 30;
-const LABEL_W = 118;
-const TRACK_H = 46;
+const LABEL_W = 138;
+const TRACK_H = 48;
 const RULER_H = 30;
-const MIN_CLIP = 0.25;
+const ADD_ROW_H = 36;
 const SNAP_PX = 8;
-const ASPECTS: Record<Aspect, number> = { "16:9": 16 / 9, "9:16": 9 / 16, "1:1": 1 };
+const MEDIA_MIME = "application/x-mediapark-media";
+const SPEEDS = [0.25, 0.5, 1, 1.5, 2, 4];
+const TEXT_COLORS = ["#ffffff", "#b8e99b", "#ffd27a", "#ff9a7a", "#8fd3ff", "#111111"];
 
 const titlePresets: Array<{ name: string; text: string; style: TitleStyle; note: string }> = [
-  { name: "Center title", text: "Your title here", style: "center", note: "Large, centered text" },
+  { name: "Center title", text: "Your title", style: "center", note: "Large text in the middle" },
   { name: "Lower third", text: "Name, role", style: "lower", note: "Names and places" },
-  { name: "Subtitle", text: "A line of dialogue", style: "subtitle", note: "Captions on a dark strip" },
+  { name: "Subtitle", text: "Type your caption", style: "subtitle", note: "Captions on a dark strip" },
 ];
 
-/* ------------------------------------------------------------------ */
-/* Helpers                                                             */
-/* ------------------------------------------------------------------ */
+type Drag = { mode: "move" | "left" | "right"; id: string; x0: number; y0: number; orig: Clip; moved: boolean };
+type DropHint = { trackId: string; start: number; duration: number };
+type Actions = {
+  togglePlay: () => void; split: () => void; duplicate: () => void; remove: (ripple?: boolean) => void;
+  undo: () => void; redo: () => void; step: (seconds: number) => void; seek: (time: number) => void;
+  seekEnd: () => void; zoom: (factor: number) => void;
+};
 
-let idCounter = 0;
-const uid = (prefix: string) => prefix + "-" + ++idCounter + Math.random().toString(36).slice(2, 6);
-const clamp = (value: number, low: number, high: number) => Math.min(Math.max(value, low), high);
-const pad = (value: number, length = 2) => String(Math.floor(value)).padStart(length, "0");
-
-function timecode(seconds: number): string {
-  const safe = Math.max(0, seconds);
-  const whole = Math.floor(safe);
-  const frames = Math.floor((safe - whole) * FPS + 1e-6);
-  return pad(whole / 3600) + ":" + pad((whole % 3600) / 60) + ":" + pad(whole % 60) + ":" + pad(frames);
-}
-
-function shortTime(seconds: number): string {
-  const whole = Math.max(0, Math.round(seconds));
-  return Math.floor(whole / 60) + ":" + pad(whole % 60);
-}
-
-function seconds1(value: number): string {
-  return value.toFixed(1) + "s";
-}
-
-function waveformPoints(seed: string, count = 96): string {
-  let h = 2166136261;
-  for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
-  const rnd = () => {
-    h = (Math.imul(h, 1664525) + 1013904223) >>> 0;
-    return h / 4294967296;
-  };
-  const top: string[] = [];
-  const bottom: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const x = (i / (count - 1)) * 100;
-    const swell = 0.35 + 0.65 * Math.abs(Math.sin(i * 0.19 + 1.3));
-    const amp = (0.12 + 0.88 * rnd()) * swell * 46;
-    top.push(x.toFixed(2) + "," + (50 - amp).toFixed(2));
-    bottom.unshift(x.toFixed(2) + "," + (50 + amp).toFixed(2));
-  }
-  return top.concat(bottom).join(" ");
-}
-
-/** A soft, generated pad so the audio track works without any uploaded file. */
-function makeAmbientWav(seconds: number): string {
-  const rate = 22050;
-  const samples = rate * seconds;
-  const buffer = new ArrayBuffer(44 + samples * 2);
-  const view = new DataView(buffer);
-  const writeText = (offset: number, text: string) => {
-    for (let i = 0; i < text.length; i++) view.setUint8(offset + i, text.charCodeAt(i));
-  };
-  writeText(0, "RIFF");
-  view.setUint32(4, 36 + samples * 2, true);
-  writeText(8, "WAVE");
-  writeText(12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, rate, true);
-  view.setUint32(28, rate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeText(36, "data");
-  view.setUint32(40, samples * 2, true);
-  const notes = [110, 164.81, 220, 277.18, 329.63];
-  for (let i = 0; i < samples; i++) {
-    const t = i / rate;
-    const envelope = Math.max(0, Math.min(1, t / 1.5, (seconds - t) / 1.5));
-    const swell = 0.75 + 0.25 * Math.sin(2 * Math.PI * 0.3 * t);
-    let sum = 0;
-    notes.forEach((frequency, index) => {
-      sum += Math.sin(2 * Math.PI * frequency * t + Math.sin(2 * Math.PI * 0.2 * t + index) * 0.4) / notes.length;
-    });
-    view.setInt16(44 + i * 2, Math.round(sum * envelope * swell * 0.35 * 32767), true);
-  }
-  return URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
-}
-
-function captureThumb(video: HTMLVideoElement): Promise<string | undefined> {
-  return new Promise((resolve) => {
-    const finish = (value?: string) => {
-      video.onseeked = null;
-      resolve(value);
-    };
-    const timer = window.setTimeout(() => finish(undefined), 2500);
-    video.onseeked = () => {
-      window.clearTimeout(timer);
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = 160;
-        canvas.height = 90;
-        const context = canvas.getContext("2d");
-        if (!context) return finish(undefined);
-        context.drawImage(video, 0, 0, 160, 90);
-        finish(canvas.toDataURL("image/jpeg", 0.7));
-      } catch {
-        finish(undefined);
-      }
-    };
-    video.currentTime = Math.min(0.5, video.duration / 2);
-  });
-}
-
-function readMedia(file: File): Promise<Media | null> {
-  const url = URL.createObjectURL(file);
-  const name = file.name.replace(/\.[^.]+$/, "");
-  if (file.type.startsWith("image/")) {
-    const image: Media = { id: uid("m"), name, kind: "image", duration: 4, url, thumb: url };
-    return Promise.resolve(image);
-  }
-  const isVideo = file.type.startsWith("video/");
-  const isAudio = file.type.startsWith("audio/");
-  if (!isVideo && !isAudio) {
-    URL.revokeObjectURL(url);
-    return Promise.resolve(null);
-  }
-  return new Promise((resolve) => {
-    const element = document.createElement(isVideo ? "video" : "audio");
-    element.preload = "metadata";
-    element.muted = true;
-    const fail = () => {
-      URL.revokeObjectURL(url);
-      resolve(null);
-    };
-    element.onerror = fail;
-    element.onloadedmetadata = async () => {
-      const duration = Number.isFinite(element.duration) ? element.duration : 0;
-      if (duration <= 0) return fail();
-      const thumb = element instanceof HTMLVideoElement ? await captureThumb(element) : undefined;
-      const item: Media = { id: uid("m"), name, kind: isVideo ? "video" : "audio", duration, url, thumb };
-      resolve(item);
-    };
-    element.src = url;
-  });
-}
-
-function defaultTracks(): Track[] {
-  const base = { muted: false, hidden: false, locked: false };
-  return [
-    { id: "t-title", name: "Titles", kind: "title", ...base },
-    { id: "t-v2", name: "Overlay", kind: "video", ...base },
-    { id: "t-v1", name: "Video", kind: "video", ...base },
-    { id: "t-a1", name: "Audio", kind: "audio", ...base },
-    { id: "t-a2", name: "Music", kind: "audio", ...base },
-  ];
-}
-
-const M_GOLD = "m-golden-hour";
-const M_SAVANNA = "m-savanna";
-const M_CANOPY = "m-canopy";
-const M_LAKE = "m-lake";
-const M_PAD = "m-pad";
-
-function initialMedia(): Media[] {
-  return [
-    { id: M_GOLD, name: "Golden hour", kind: "color", duration: 6, gradient: "linear-gradient(135deg,#f6c453,#e2703a 55%,#5b2a4a)" },
-    { id: M_SAVANNA, name: "Savanna walk", kind: "color", duration: 5, gradient: "linear-gradient(160deg,#d3e08f,#5f9f5a 50%,#173d27)" },
-    { id: M_CANOPY, name: "Forest canopy", kind: "color", duration: 5, gradient: "linear-gradient(135deg,#7bd69a,#1e6b46 55%,#071a10)" },
-    { id: M_LAKE, name: "Lake mist", kind: "color", duration: 4, gradient: "linear-gradient(180deg,#b3dde9,#5b8fa8 50%,#1c3446)" },
-    { id: M_PAD, name: "Ambient pad", kind: "audio", duration: 12, url: makeAmbientWav(12) },
-  ];
-}
-
-function initialProject(): Project {
-  const clip = (partial: Partial<Clip> & Pick<Clip, "trackId" | "label" | "start" | "duration">): Clip => ({
-    id: uid("c"),
-    inPoint: 0,
-    volume: 1,
-    opacity: 1,
-    ...partial,
-  });
-  return {
-    tracks: defaultTracks(),
-    clips: [
-      clip({ trackId: "t-v1", mediaId: M_GOLD, label: "Golden hour", start: 0, duration: 6 }),
-      clip({ trackId: "t-v1", mediaId: M_SAVANNA, label: "Savanna walk", start: 6, duration: 5 }),
-      clip({ trackId: "t-v1", mediaId: M_CANOPY, label: "Forest canopy", start: 11, duration: 5 }),
-      clip({ trackId: "t-title", label: "Title", start: 0.6, duration: 4, text: "Kigali, at dawn", titleStyle: "lower" }),
-      clip({ trackId: "t-title", label: "Title", start: 11.5, duration: 3.5, text: "Into the forest", titleStyle: "center" }),
-      clip({ trackId: "t-a1", mediaId: M_PAD, label: "Ambient pad", start: 0, duration: 12, volume: 0.8 }),
-    ],
-  };
-}
-
-/** First free start time on a track at or after `desired` where a clip of `length` fits. */
-function freeStart(clips: Clip[], trackId: string, desired: number, length: number): number {
-  const onTrack = clips.filter((c) => c.trackId === trackId).sort((a, b) => a.start - b.start);
-  let start = desired;
-  for (const c of onTrack) {
-    if (start < c.start + c.duration - 1e-6 && start + length > c.start + 1e-6) start = c.start + c.duration;
-  }
-  return start;
-}
-
-/** Clamp a clip between its neighbours on a track. Returns null when it cannot fit there. */
-function placeClip(clips: Clip[], self: Clip, trackId: string, desired: number): number | null {
-  const centre = desired + self.duration / 2;
-  let low = 0;
-  let high = Infinity;
-  for (const c of clips) {
-    if (c.trackId !== trackId || c.id === self.id) continue;
-    if (c.start + c.duration / 2 < centre) low = Math.max(low, c.start + c.duration);
-    else high = Math.min(high, c.start);
-  }
-  if (high - low < self.duration - 1e-6) return null;
-  return clamp(desired, low, high - self.duration);
-}
+const isTrackCompatible = (track: Track, media: Media) => (media.kind === "audio" ? track.kind === "audio" : track.kind === "video");
 
 /* ------------------------------------------------------------------ */
 /* Small components                                                    */
 /* ------------------------------------------------------------------ */
 
-function ToolButton({ icon: Icon, label, onClick, disabled, active }: {
-  icon: LucideIcon;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  active?: boolean;
+function ToolButton({ icon: Icon, label, hint, onClick, disabled, active }: {
+  icon: LucideIcon; label: string; hint?: string; onClick: () => void; disabled?: boolean; active?: boolean;
 }) {
   return (
-    <button className={"vs-tool" + (active ? " active" : "")} onClick={onClick} disabled={disabled} aria-pressed={active}>
+    <button className={"vs-tool" + (active ? " active" : "")} onClick={onClick} disabled={disabled} aria-pressed={active} title={hint ? label + " (" + hint + ")" : label}>
       <Icon size={19} strokeWidth={1.8} />
       <span>{label}</span>
     </button>
   );
 }
 
-function Waveform({ seed }: { seed: string }) {
-  const points = useMemo(() => waveformPoints(seed), [seed]);
+function buildWave(peaks: number[] | undefined, from: number, to: number): string {
+  const count = 120;
+  const top: string[] = [];
+  const bottom: string[] = [];
+  for (let i = 0; i < count; i++) {
+    let value = 0.12;
+    if (peaks && peaks.length > 0) {
+      const a = clamp(Math.floor((from + ((to - from) * i) / count) * peaks.length), 0, peaks.length - 1);
+      const b = clamp(Math.ceil((from + ((to - from) * (i + 1)) / count) * peaks.length), a + 1, peaks.length);
+      value = 0;
+      for (let k = a; k < b; k++) value = Math.max(value, peaks[k]);
+    }
+    const x = (i / (count - 1)) * 100;
+    const amp = (0.05 + 0.95 * value) * 46;
+    top.push(x.toFixed(2) + "," + (50 - amp).toFixed(2));
+    bottom.unshift(x.toFixed(2) + "," + (50 + amp).toFixed(2));
+  }
+  return top.concat(bottom).join(" ");
+}
+
+function Waveform({ peaks, from = 0, to = 1 }: { peaks?: number[]; from?: number; to?: number }) {
+  const points = useMemo(() => buildWave(peaks, from, to), [peaks, from, to]);
   return (
     <svg className="vs-wave" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
       <polygon points={points} />
@@ -333,33 +93,48 @@ function Waveform({ seed }: { seed: string }) {
   );
 }
 
-function thumbStyle(media: Media | undefined): CSSProperties {
-  if (!media) return {};
-  if (media.kind === "color") return { background: media.gradient };
-  if ((media.kind === "video" || media.kind === "image") && media.thumb) {
-    return { backgroundImage: "url(" + media.thumb + ")", backgroundSize: "cover", backgroundPosition: "center" };
+function thumbStyle(media: Media): CSSProperties {
+  if (media.kind === "image") return { backgroundImage: "url(" + media.url + ")", backgroundSize: "cover", backgroundPosition: "center" };
+  if (media.kind === "video" && media.strip) {
+    return { backgroundImage: "url(" + media.strip + ")", backgroundSize: (media.frames ?? 1) * 100 + "% 100%", backgroundPosition: "0 0" };
   }
   return {};
 }
 
-function MediaLayer({ clip, media, time, playing, muted }: {
-  clip: Clip;
-  media: Media;
-  time: number;
-  playing: boolean;
-  muted: boolean;
+function FrameStrip({ media, clip, pps, height }: { media: Media; clip: Clip; pps: number; height: number }) {
+  if (media.kind === "image") {
+    return <span className="vs-frames" style={{ backgroundImage: "url(" + media.url + ")", backgroundSize: "auto 100%", backgroundRepeat: "repeat-x" }} />;
+  }
+  if (!media.strip) return null;
+  const frames = media.frames ?? 1;
+  const slotW = Math.max(24, Math.round(height * ((media.width ?? 16) / (media.height ?? 9))));
+  const count = Math.min(400, Math.ceil((clip.duration * pps) / slotW));
+  return (
+    <span className="vs-frames">
+      {Array.from({ length: count }, (_, k) => {
+        const sourceTime = clip.inPoint + (((k + 0.5) * slotW) / pps) * clip.speed;
+        const index = clamp(Math.floor((sourceTime / media.duration) * frames), 0, frames - 1);
+        return <i key={k} style={{ width: slotW, backgroundImage: "url(" + media.strip + ")", backgroundSize: frames * slotW + "px 100%", backgroundPosition: -index * slotW + "px 0" }} />;
+      })}
+    </span>
+  );
+}
+
+function MediaLayer({ clip, media, time, playing, muted, asAudio }: {
+  clip: Clip; media: Media; time: number; playing: boolean; muted: boolean; asAudio: boolean;
 }) {
   const element = useRef<HTMLMediaElement | null>(null);
-  const setElement = useCallback((node: HTMLMediaElement | null) => {
-    element.current = node;
-  }, []);
-  const local = clip.inPoint + (time - clip.start);
+  const setElement = useCallback((node: HTMLMediaElement | null) => { element.current = node; }, []);
+  const local = clip.inPoint + (time - clip.start) * clip.speed;
+  const fade = fadeFactor(clip, time);
+  const volume = clamp(clip.volume * fade, 0, 1);
 
   useEffect(() => {
     const el = element.current;
     if (!el) return;
-    el.volume = clamp(clip.volume, 0, 1);
+    el.volume = volume;
     el.muted = muted;
+    el.playbackRate = clip.speed;
     if (!playing) {
       el.pause();
       if (Math.abs(el.currentTime - local) > 0.04) el.currentTime = local;
@@ -367,41 +142,152 @@ function MediaLayer({ clip, media, time, playing, muted }: {
       if (Math.abs(el.currentTime - local) > 0.35) el.currentTime = local;
       if (el.paused) void el.play().catch(() => undefined);
     }
-  }, [local, playing, muted, clip.volume]);
+  }, [local, playing, muted, volume, clip.speed]);
 
-  const style: CSSProperties = { opacity: clip.opacity };
-  if (media.kind === "video") {
-    return <video ref={setElement} className="vs-layer" style={style} src={media.url} playsInline preload="auto" />;
-  }
-  if (media.kind === "audio") {
-    return <audio ref={setElement} src={media.url} preload="auto" />;
-  }
-  if (media.kind === "image") {
-    return <img className="vs-layer" style={style} src={media.url} alt="" />;
-  }
-  return <div className="vs-layer" style={{ ...style, background: media.gradient }} />;
+  if (asAudio || media.kind === "audio") return <audio ref={setElement} src={media.url} preload="auto" />;
+  const style: CSSProperties = { opacity: clip.opacity * fade, objectFit: clip.fit, transform: clip.zoom !== 1 ? "scale(" + clip.zoom + ")" : undefined };
+  if (media.kind === "image") return <img className="vs-layer" style={style} src={media.url} alt="" />;
+  return <video ref={setElement} className="vs-layer" style={style} src={media.url} playsInline preload="auto" />;
+}
+
+/* ------------------------------------------------------------------ */
+/* Export dialog                                                       */
+/* ------------------------------------------------------------------ */
+
+function ExportDialog({ project, media, aspect, name, onClose }: {
+  project: Project; media: Map<string, Media>; aspect: Aspect; name: string; onClose: () => void;
+}) {
+  const [resolution, setResolution] = useState(720);
+  const [phase, setPhase] = useState<"idle" | "rendering" | "done" | "error">("idle");
+  const [progress, setProgress] = useState(0);
+  const [message, setMessage] = useState("");
+  const [result, setResult] = useState<{ url: string; size: number; extension: string } | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const urlRef = useRef<string | null>(null);
+  const length = project.clips.reduce((end, c) => Math.max(end, c.start + c.duration), 0);
+  const dims = frameSize(aspect, resolution);
+  const supported = exportSupported();
+  const fileName = (name.trim().replace(/[^\w\- ]+/g, "").trim() || "video").replace(/\s+/g, "-");
+
+  const close = useCallback(() => {
+    abortRef.current?.abort();
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    urlRef.current = null;
+    onClose();
+  }, [onClose]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") close(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [close]);
+
+  useEffect(() => () => {
+    abortRef.current?.abort();
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+  }, []);
+
+  const start = async () => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setPhase("rendering");
+    setProgress(0);
+    try {
+      const output = await exportVideo({ project, media, aspect, resolution, fps: 30, signal: controller.signal, onProgress: setProgress });
+      if (output.blob.size === 0) throw new Error("The recording came out empty. Try again.");
+      const url = URL.createObjectURL(output.blob);
+      urlRef.current = url;
+      setResult({ url, size: output.blob.size, extension: output.extension });
+      setPhase("done");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setMessage(error instanceof Error ? error.message : "Something went wrong while exporting.");
+      setPhase("error");
+    }
+  };
+
+  return (
+    <div className="vs-dialog-scrim" onPointerDown={(e) => { if (e.target === e.currentTarget && phase !== "rendering") close(); }}>
+      <div className="vs-dialog" role="dialog" aria-modal="true" aria-labelledby="vs-export-title">
+        <div className="vs-dialog-head">
+          <h3 id="vs-export-title">Export video</h3>
+          <button className="vs-icon-btn" onClick={close} aria-label="Close"><X size={18} /></button>
+        </div>
+
+        {phase === "idle" && (
+          <div className="vs-dialog-body">
+            {!supported && <p className="vs-alert">This browser can't record video. Use a recent Chrome, Edge, Firefox or Safari.</p>}
+            <div className="vs-field">Quality
+              <div className="vs-segment">
+                {[480, 720, 1080].map((value) => (
+                  <button key={value} className={resolution === value ? "active" : ""} onClick={() => setResolution(value)}>{value}p</button>
+                ))}
+              </div>
+            </div>
+            <dl className="vs-readout">
+              <div><dt>Size</dt><dd>{dims.width} × {dims.height}</dd></div>
+              <div><dt>Length</dt><dd>{shortTime(length)}</dd></div>
+            </dl>
+            <p className="vs-hint">Your video is rendered in real time, so a {shortTime(length)} video takes about {shortTime(length)} to export. Keep this tab open and visible while it works.</p>
+            <button className="vs-cta" onClick={start} disabled={!supported || length <= 0}><Download size={16} /> Start export</button>
+          </div>
+        )}
+
+        {phase === "rendering" && (
+          <div className="vs-dialog-body">
+            <div className="vs-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}><span style={{ width: progress * 100 + "%" }} /></div>
+            <p className="vs-hint"><b>{Math.round(progress * 100)}%</b> rendered. Keep this tab open until it finishes.</p>
+            <button className="vs-secondary" onClick={() => { abortRef.current?.abort(); setPhase("idle"); }}>Cancel export</button>
+          </div>
+        )}
+
+        {phase === "done" && result && (
+          <div className="vs-dialog-body">
+            <video className="vs-result" src={result.url} controls playsInline />
+            <p className="vs-hint">Ready: {(result.size / 1048576).toFixed(1)} MB, {result.extension.toUpperCase()} file.</p>
+            <a className="vs-cta" href={result.url} download={fileName + "." + result.extension}><Download size={16} /> Download video</a>
+          </div>
+        )}
+
+        {phase === "error" && (
+          <div className="vs-dialog-body">
+            <p className="vs-alert">{message}</p>
+            <button className="vs-cta" onClick={() => setPhase("idle")}>Try again</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /* ------------------------------------------------------------------ */
 /* Studio                                                              */
 /* ------------------------------------------------------------------ */
 
-export default function VideoStudio({ onExport }: { onExport: () => void }) {
-  const [media, setMedia] = useState<Media[]>(initialMedia);
-  const [project, setProject] = useState<Project>(initialProject);
+export default function VideoStudio() {
+  const [media, setMedia] = useState<Media[]>([]);
+  const [project, setProject] = useState<Project>(() => ({ tracks: defaultTracks(), clips: [] }));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [playhead, setPlayhead] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [pps, setPps] = useState(56);
+  const [pps, setPps] = useState(60);
   const [snapOn, setSnapOn] = useState(true);
   const [aspect, setAspect] = useState<Aspect>("16:9");
-  const [panelTab, setPanelTab] = useState<"media" | "titles">("media");
-  const [projectName, setProjectName] = useState("Kigali at dawn");
-  const [status, setStatus] = useState("Ready. Click a clip in the media panel to add it.");
+  const [panelTab, setPanelTab] = useState<"media" | "text">("media");
+  const [projectName, setProjectName] = useState("Untitled video");
+  const [status, setStatus] = useState("Add video, music or photos to begin.");
+  const [ready, setReady] = useState(false);
+  const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
+  const [importing, setImporting] = useState(0);
+  const [fileDrag, setFileDrag] = useState(false);
+  const [dropHint, setDropHint] = useState<DropHint | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const [, setHistoryVersion] = useState(0);
 
   const projectRef = useRef(project);
   projectRef.current = project;
+  const mediaRef = useRef(media);
+  mediaRef.current = media;
   const playheadRef = useRef(0);
   const ppsRef = useRef(pps);
   ppsRef.current = pps;
@@ -415,26 +301,31 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
   const rulerRef = useRef<HTMLDivElement>(null);
   const lanesRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const addAfterPick = useRef(false);
+  const dragDepth = useRef(0);
+  const draggingMedia = useRef<string | null>(null);
   const actions = useRef<Actions | null>(null);
 
   const mediaMap = useMemo(() => new Map(media.map((m) => [m.id, m])), [media]);
+  const trackById = useMemo(() => new Map(project.tracks.map((t) => [t.id, t])), [project.tracks]);
   const selected = project.clips.find((c) => c.id === selectedId) ?? null;
   const selectedMedia = selected?.mediaId ? mediaMap.get(selected.mediaId) : undefined;
+  const selectedTrack = selected ? trackById.get(selected.trackId) : undefined;
   const contentEnd = project.clips.reduce((end, c) => Math.max(end, c.start + c.duration), 0);
   const total = Math.max(contentEnd, 1);
   const totalRef = useRef(total);
   totalRef.current = total;
-  const timelineSeconds = Math.max(total + 10, 24);
-  const trackById = useMemo(() => new Map(project.tracks.map((t) => [t.id, t])), [project.tracks]);
+  const endRef = useRef(contentEnd);
+  endRef.current = contentEnd;
+  const timelineSeconds = Math.max(total + 10, 30);
 
-  /* ---- status + history ---- */
+  /* ---- status, history, persistence ---- */
 
   const flash = (message: string) => {
     setStatus(message);
     window.clearTimeout(statusTimer.current);
-    statusTimer.current = window.setTimeout(() => setStatus("Ready"), 4200);
+    statusTimer.current = window.setTimeout(() => setStatus(projectRef.current.clips.length ? "Ready." : "Add video, music or photos to begin."), 5000);
   };
-
   useEffect(() => () => window.clearTimeout(statusTimer.current), []);
 
   const snapshot = () => {
@@ -442,20 +333,11 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
     futureRef.current = [];
     setHistoryVersion((v) => v + 1);
   };
-
-  const change = (fn: (p: Project) => Project) => {
-    snapshot();
-    setProject(fn);
-  };
-
+  const change = (fn: (p: Project) => Project) => { snapshot(); setProject(fn); };
   const liveEdit = (fn: (p: Project) => Project) => {
-    if (!editGuard.current) {
-      snapshot();
-      editGuard.current = true;
-    }
+    if (!editGuard.current) { snapshot(); editGuard.current = true; }
     setProject(fn);
   };
-
   const undo = () => {
     const previous = pastRef.current.pop();
     if (!previous) return;
@@ -463,7 +345,6 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
     setProject(previous);
     setHistoryVersion((v) => v + 1);
   };
-
   const redo = () => {
     const next = futureRef.current.pop();
     if (!next) return;
@@ -471,14 +352,62 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
     setProject(next);
     setHistoryVersion((v) => v + 1);
   };
-
   const updateClip = (id: string, patch: Partial<Clip>, live = false) => {
     const apply = (p: Project): Project => ({ ...p, clips: p.clips.map((c) => (c.id === id ? { ...c, ...patch } : c)) });
-    if (live) liveEdit(apply);
-    else change(apply);
+    if (live) liveEdit(apply); else change(apply);
+  };
+  const updateTrack = (id: string, patch: Partial<Track>) => change((p) => ({ ...p, tracks: p.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)) }));
+  const endEdit = () => { editGuard.current = false; };
+
+  const enrich = async (item: Media) => {
+    const patch: Partial<Media> = {};
+    if (item.kind === "video") {
+      const built = await buildStrip(item);
+      if (built) { patch.strip = built.strip; patch.frames = built.frames; }
+    }
+    if (item.kind !== "image") {
+      const peaks = await computePeaks(item.blob);
+      if (peaks) patch.peaks = peaks;
+    }
+    if (Object.keys(patch).length === 0 || !mediaRef.current.some((m) => m.id === item.id)) return;
+    setMedia((previous) => previous.map((m) => (m.id === item.id ? { ...m, ...patch } : m)));
+    void saveMedia({ ...item, ...patch }).catch(() => undefined);
   };
 
-  const updateTrack = (id: string, patch: Partial<Track>) => change((p) => ({ ...p, tracks: p.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)) }));
+  // Restore the last session.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const data = await loadAll();
+      if (cancelled) return;
+      if (data) {
+        const items: Media[] = data.media.map((m) => ({ ...m, url: URL.createObjectURL(m.blob) }));
+        setMedia(items);
+        if (data.project) {
+          const known = new Set(items.map((m) => m.id));
+          const clips = data.project.project.clips.filter((c) => !c.mediaId || known.has(c.mediaId));
+          setProject({ tracks: data.project.project.tracks, clips });
+          setAspect(data.project.aspect);
+          setProjectName(data.project.name);
+          if (clips.length > 0) setStatus("Welcome back. Your last project was restored.");
+        }
+        items.filter((m) => (m.kind === "video" && (m.frames ?? 1) < 2) || (m.kind !== "image" && !m.peaks)).forEach((m) => void enrich(m));
+      }
+      setReady(true);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Autosave.
+  useEffect(() => {
+    if (!ready) return;
+    setSaveState("saving");
+    const id = window.setTimeout(() => {
+      saveProject({ project, aspect, name: projectName }).then(() => setSaveState("saved")).catch(() => setSaveState("error"));
+    }, 700);
+    return () => window.clearTimeout(id);
+  }, [project, aspect, projectName, ready]);
 
   /* ---- transport ---- */
 
@@ -487,13 +416,10 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
     playheadRef.current = value;
     setPlayhead(value);
   };
-
   const togglePlay = () => {
-    if (playing) {
-      setPlaying(false);
-      return;
-    }
-    if (playheadRef.current >= totalRef.current - 0.01) seek(0);
+    if (playing) { setPlaying(false); return; }
+    if (endRef.current <= 0) { flash("Add a clip to the timeline first."); return; }
+    if (playheadRef.current >= endRef.current - 0.01) seek(0);
     setPlaying(true);
   };
 
@@ -504,9 +430,9 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
     const tick = (now: number) => {
       const next = playheadRef.current + (now - last) / 1000;
       last = now;
-      if (next >= totalRef.current) {
-        playheadRef.current = totalRef.current;
-        setPlayhead(totalRef.current);
+      if (next >= endRef.current) {
+        playheadRef.current = endRef.current;
+        setPlayhead(endRef.current);
         setPlaying(false);
         return;
       }
@@ -523,62 +449,128 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
     const scroller = scrollRef.current;
     if (!scroller) return;
     const x = LABEL_W + playhead * pps;
-    if (x > scroller.scrollLeft + scroller.clientWidth - 30 || x < scroller.scrollLeft + LABEL_W) {
-      scroller.scrollLeft = Math.max(0, x - LABEL_W - 60);
-    }
+    if (x > scroller.scrollLeft + scroller.clientWidth - 30 || x < scroller.scrollLeft + LABEL_W) scroller.scrollLeft = Math.max(0, x - LABEL_W - 60);
   }, [playhead, playing, pps]);
 
-  /* ---- editing actions ---- */
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      setPps((value) => clamp(value * (1 - event.deltaY * 0.0025), 12, 300));
+    };
+    scroller.addEventListener("wheel", onWheel, { passive: false });
+    return () => scroller.removeEventListener("wheel", onWheel);
+  }, []);
+
+  const fitTimeline = () => {
+    const scroller = scrollRef.current;
+    if (!scroller || contentEnd <= 0) return;
+    setPps(clamp((scroller.clientWidth - LABEL_W - 48) / contentEnd, 12, 300));
+    scroller.scrollLeft = 0;
+  };
+
+  /* ---- importing and placing media ---- */
+
+  const placeMedia = (items: Media[], opts: { start?: number; trackId?: string } = {}) => {
+    const current = projectRef.current;
+    let clips = current.clips;
+    let cursor = opts.start ?? playheadRef.current;
+    const created: Clip[] = [];
+    let blockedKind: TrackKind | null = null;
+    for (const item of items) {
+      const kind: TrackKind = item.kind === "audio" ? "audio" : "video";
+      const usable = current.tracks.filter((t) => t.kind === kind && !t.locked);
+      const preferred = opts.trackId ? usable.find((t) => t.id === opts.trackId) : undefined;
+      const track = preferred ?? (kind === "video" ? usable[usable.length - 1] : usable[0]);
+      if (!track) { blockedKind = kind; continue; }
+      const start = freeStart(clips, track.id, cursor, item.duration);
+      const clip = newClip({ trackId: track.id, mediaId: item.id, label: item.name, start, duration: item.duration });
+      clips = [...clips, clip];
+      created.push(clip);
+      cursor = start + item.duration;
+    }
+    if (created.length === 0) {
+      if (blockedKind) flash("Unlock a " + blockedKind + " track to add this.");
+      return;
+    }
+    change((p) => ({ ...p, clips: [...p.clips, ...created] }));
+    setSelectedId(created[created.length - 1].id);
+    flash(created.length === 1 ? "Added " + created[0].label + "." : "Added " + created.length + " clips to the timeline.");
+  };
+
+  const importFiles = async (files: File[], opts: { add: boolean; start?: number; trackId?: string }) => {
+    if (files.length === 0) return;
+    setImporting((n) => n + files.length);
+    const added: Media[] = [];
+    const rejected: string[] = [];
+    for (const file of files) {
+      const item = await readMedia(file);
+      if (item) added.push(item); else rejected.push(file.name);
+    }
+    setImporting((n) => n - files.length);
+    if (added.length > 0) {
+      setMedia((previous) => [...previous, ...added]);
+      mediaRef.current = [...mediaRef.current, ...added];
+      setPanelTab("media");
+      for (const item of added) {
+        saveMedia(item).catch(() => { setSaveState("error"); flash("Browser storage is full. This file will be gone after a refresh."); });
+        void enrich(item);
+      }
+      if (opts.add) placeMedia(added, { start: opts.start, trackId: opts.trackId });
+      else flash("Imported " + added.length + (added.length === 1 ? " file." : " files.") + " Click or drag them onto the timeline.");
+    }
+    if (rejected.length > 0) flash("Couldn't read " + rejected.slice(0, 2).join(", ") + (rejected.length > 2 ? " and more" : "") + ". Try MP4, WebM, MP3, WAV, JPG or PNG.");
+  };
+
+  const pickFiles = (addToTimeline: boolean) => {
+    addAfterPick.current = addToTimeline;
+    fileRef.current?.click();
+  };
+  const onPicked = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.currentTarget.files ?? []);
+    event.currentTarget.value = "";
+    const add = addAfterPick.current;
+    addAfterPick.current = false;
+    void importFiles(files, { add });
+  };
+
+  const removeMediaItem = (item: Media) => {
+    if (project.clips.some((c) => c.mediaId === item.id)) { flash("“" + item.name + "” is used on the timeline. Delete its clips first."); return; }
+    URL.revokeObjectURL(item.url);
+    setMedia((previous) => previous.filter((m) => m.id !== item.id));
+    void deleteMedia(item.id).catch(() => undefined);
+  };
+
+  /* ---- editing ---- */
 
   const trackLocked = (clip: Clip) => trackById.get(clip.trackId)?.locked ?? false;
 
-  const addMedia = (item: Media) => {
-    const kind: TrackKind = item.kind === "audio" ? "audio" : "video";
-    const preferred = kind === "audio" ? "t-a1" : "t-v1";
-    const track =
-      project.tracks.find((t) => t.id === preferred && !t.locked) ??
-      project.tracks.find((t) => t.kind === kind && !t.locked);
-    if (!track) {
-      flash("Unlock a " + kind + " track to add this clip.");
-      return;
-    }
-    const duration = item.kind === "image" ? 4 : item.duration;
-    const start = freeStart(project.clips, track.id, playheadRef.current, duration);
-    const clip: Clip = { id: uid("c"), trackId: track.id, mediaId: item.id, label: item.name, start, inPoint: 0, duration, volume: 1, opacity: 1 };
-    change((p) => ({ ...p, clips: [...p.clips, clip] }));
-    setSelectedId(clip.id);
-    flash("Added " + item.name + " to " + track.name + ".");
-  };
-
   const addTitle = (preset: (typeof titlePresets)[number]) => {
     const track = project.tracks.find((t) => t.kind === "title");
-    if (!track || track.locked) {
-      flash("Unlock the Titles track to add a title.");
-      return;
-    }
+    if (!track || track.locked) { flash("Unlock the Text track to add text."); return; }
     const start = freeStart(project.clips, track.id, playheadRef.current, 3);
-    const clip: Clip = { id: uid("c"), trackId: track.id, label: preset.name, start, inPoint: 0, duration: 3, volume: 1, opacity: 1, text: preset.text, titleStyle: preset.style };
+    const clip = newClip({ trackId: track.id, label: preset.name, start, duration: 3, text: preset.text, titleStyle: preset.style, color: "#ffffff", size: 1, fadeIn: 0.3, fadeOut: 0.3 });
     change((p) => ({ ...p, clips: [...p.clips, clip] }));
     setSelectedId(clip.id);
-    flash("Added a " + preset.name.toLowerCase() + ". Edit its text in the inspector.");
+    setPanelTab("media");
+    flash("Added text. Type your own in the panel on the right.");
   };
 
   const split = () => {
     const t = playheadRef.current;
     const inside = (c: Clip) => !trackLocked(c) && t > c.start + 0.05 && t < c.start + c.duration - 0.05;
     const targets = selected ? (inside(selected) ? [selected] : []) : project.clips.filter(inside);
-    if (targets.length === 0) {
-      flash(selected ? "Move the playhead over the selected clip to split it." : "Move the playhead over a clip to split it.");
-      return;
-    }
+    if (targets.length === 0) { flash(selected ? "Move the playhead over the selected clip to split it." : "Move the playhead over a clip to split it."); return; }
     const ids = new Set(targets.map((c) => c.id));
     let nextSelection: string | null = null;
     const clips = project.clips.flatMap((c) => {
       if (!ids.has(c.id)) return [c];
       const firstLength = t - c.start;
-      const second: Clip = { ...c, id: uid("c"), start: t, inPoint: c.inPoint + firstLength, duration: c.duration - firstLength };
+      const second: Clip = { ...c, id: uid("c"), start: t, inPoint: c.inPoint + firstLength * c.speed, duration: c.duration - firstLength, fadeIn: 0 };
       if (targets.length === 1) nextSelection = second.id;
-      return [{ ...c, duration: firstLength }, second];
+      return [{ ...c, duration: firstLength, fadeOut: 0 }, second];
     });
     change((p) => ({ ...p, clips }));
     setSelectedId(nextSelection);
@@ -586,10 +578,7 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
   };
 
   const duplicate = () => {
-    if (!selected) {
-      flash("Select a clip to duplicate it.");
-      return;
-    }
+    if (!selected) { flash("Select a clip to duplicate it."); return; }
     const start = freeStart(project.clips, selected.trackId, selected.start + selected.duration, selected.duration);
     const copy: Clip = { ...selected, id: uid("c"), start };
     change((p) => ({ ...p, clips: [...p.clips, copy] }));
@@ -597,59 +586,88 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
     flash("Duplicated " + selected.label + ".");
   };
 
-  const remove = () => {
-    if (!selected) {
-      flash("Select a clip to delete it.");
-      return;
-    }
-    if (trackLocked(selected)) {
-      flash("Unlock the track to delete this clip.");
-      return;
-    }
-    change((p) => ({ ...p, clips: p.clips.filter((c) => c.id !== selected.id) }));
+  const remove = (ripple = false) => {
+    if (!selected) { flash("Select a clip to delete it."); return; }
+    if (trackLocked(selected)) { flash("Unlock the track to delete this clip."); return; }
+    change((p) => {
+      let clips = p.clips.filter((c) => c.id !== selected.id);
+      if (ripple) clips = clips.map((c) => (c.trackId === selected.trackId && c.start >= selected.start + selected.duration - 1e-6 ? { ...c, start: c.start - selected.duration } : c));
+      return { ...p, clips };
+    });
     setSelectedId(null);
-    flash("Deleted " + selected.label + ".");
+    flash(ripple ? "Deleted " + selected.label + " and closed the gap." : "Deleted " + selected.label + ".");
   };
 
-  const resetAll = () => {
+  const detachAudio = () => {
+    if (!selected || selectedMedia?.kind !== "video" || selectedTrack?.kind !== "video") { flash("Select a video clip to separate its sound."); return; }
+    const target = project.tracks.find((t) => t.kind === "audio" && !t.locked && isFree(project.clips, t.id, selected.start, selected.duration));
+    if (!target) { flash("No audio track is free at that spot. Use “+ Audio” to add one."); return; }
+    const audio: Clip = { ...selected, id: uid("c"), trackId: target.id, opacity: 1, fadeIn: selected.fadeIn, fadeOut: selected.fadeOut };
+    change((p) => ({ ...p, clips: [...p.clips.map((c) => (c.id === selected.id ? { ...c, volume: 0 } : c)), audio] }));
+    flash("Sound moved to " + target.name + ". You can now edit it separately.");
+  };
+
+  const setSpeed = (clip: Clip, speed: number) => {
+    const span = clip.duration * clip.speed;
+    let duration = span / speed;
+    const nextStart = project.clips.reduce((value, c) => (c.id !== clip.id && c.trackId === clip.trackId && c.start >= clip.start + clip.duration - 1e-6 ? Math.min(value, c.start) : value), Infinity);
+    let shortened = false;
+    if (clip.start + duration > nextStart + 1e-6) { duration = nextStart - clip.start; shortened = true; }
+    if (duration < MIN_CLIP) { flash("There isn't room for that speed. Move the next clip first."); return; }
+    updateClip(clip.id, { speed, duration });
+    if (shortened) flash("Clip shortened to fit before the next clip.");
+  };
+
+  const addTrack = (kind: "video" | "audio") => {
+    const existing = projectRef.current.tracks.filter((t) => t.kind === kind);
+    if (existing.length >= 4) { flash("You can have up to 4 " + kind + " tracks."); return; }
+    const track: Track = { id: uid("t"), name: (kind === "video" ? "Video " : "Audio ") + (existing.length + 1), kind, muted: false, hidden: false, locked: false };
+    change((p) => {
+      const tracks = [...p.tracks];
+      if (kind === "video") tracks.splice(tracks.findIndex((t) => t.kind === "video"), 0, track); else tracks.push(track);
+      return { ...p, tracks };
+    });
+  };
+  const removeTrack = (track: Track) => change((p) => ({ ...p, tracks: p.tracks.filter((t) => t.id !== track.id) }));
+
+  const clearTimeline = () => {
     if (project.clips.length === 0) return;
-    change(() => ({ tracks: defaultTracks(), clips: [] }));
+    change((p) => ({ ...p, clips: [] }));
     setSelectedId(null);
     seek(0);
     setPlaying(false);
-    flash("Timeline cleared. Undo brings it back.");
+    flash("Timeline cleared. Press Undo to bring it back.");
   };
 
-  const importFiles = async (event: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.currentTarget.files ?? []);
-    event.currentTarget.value = "";
-    if (files.length === 0) return;
-    flash("Reading " + files.length + (files.length === 1 ? " file…" : " files…"));
-    const added: Media[] = [];
-    for (const file of files) {
-      const item = await readMedia(file);
-      if (item) added.push(item);
-    }
-    if (added.length === 0) {
-      flash("Those files can't be used. Choose a video, audio or image file.");
-      return;
-    }
-    setMedia((previous) => [...previous, ...added]);
-    setPanelTab("media");
-    flash("Imported " + added.length + (added.length === 1 ? " file." : " files.") + " Click one to add it.");
+  const newProject = async () => {
+    if ((project.clips.length > 0 || media.length > 0) && !window.confirm("Start a new project? This removes the timeline and all imported media from this browser.")) return;
+    setPlaying(false);
+    mediaRef.current.forEach((m) => URL.revokeObjectURL(m.url));
+    pastRef.current = [];
+    futureRef.current = [];
+    setMedia([]);
+    setProject({ tracks: defaultTracks(), clips: [] });
+    setSelectedId(null);
+    setAspect("16:9");
+    setProjectName("Untitled video");
+    seek(0);
+    try { await clearAll(); } catch { /* storage unavailable */ }
+    flash("New project ready.");
   };
 
   actions.current = {
     togglePlay, split, duplicate, remove, undo, redo,
     step: (delta) => { setPlaying(false); seek(clamp(playheadRef.current + delta, 0, timelineSeconds)); },
     seek,
-    seekEnd: () => { setPlaying(false); seek(totalRef.current); },
+    seekEnd: () => { setPlaying(false); seek(endRef.current); },
+    zoom: (factor) => setPps((value) => clamp(value * factor, 12, 300)),
   };
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      if (target && (target.closest("input, textarea, select, [contenteditable='true']") !== null)) return;
+      if (target && target.closest("input, textarea, select, [contenteditable='true']") !== null) return;
+      if (document.querySelector(".vs-dialog")) return;
       const api = actions.current;
       if (!api) return;
       const mod = event.metaKey || event.ctrlKey;
@@ -659,12 +677,14 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
       if (mod && key === "d") { event.preventDefault(); api.duplicate(); return; }
       if (mod || event.altKey) return;
       if (event.key === " " && target?.closest("button, a") === null) { event.preventDefault(); api.togglePlay(); }
-      else if (key === "s") { api.split(); }
-      else if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); api.remove(); }
+      else if (key === "s") api.split();
+      else if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); api.remove(event.shiftKey); }
       else if (event.key === "ArrowLeft") { event.preventDefault(); api.step(event.shiftKey ? -1 : -1 / FPS); }
       else if (event.key === "ArrowRight") { event.preventDefault(); api.step(event.shiftKey ? 1 : 1 / FPS); }
       else if (event.key === "Home") { event.preventDefault(); api.seek(0); }
       else if (event.key === "End") { event.preventDefault(); api.seekEnd(); }
+      else if (event.key === "=" || event.key === "+") api.zoom(1.25);
+      else if (event.key === "-") api.zoom(0.8);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -679,19 +699,14 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
     let bestDistance = threshold;
     for (const point of points) {
       const distance = Math.abs(point - value);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        best = point;
-      }
+      if (distance < bestDistance) { bestDistance = distance; best = point; }
     }
     return best;
   };
 
-  const scrubTo = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const ruler = rulerRef.current;
-    if (!ruler) return;
-    const x = event.clientX - ruler.getBoundingClientRect().left;
-    seek(clamp(x / ppsRef.current, 0, timelineSeconds));
+  const timeAt = (clientX: number, element: HTMLElement | null) => {
+    if (!element) return 0;
+    return clamp((clientX - element.getBoundingClientRect().left) / ppsRef.current, 0, timelineSeconds);
   };
 
   const beginDrag = (event: ReactPointerEvent<HTMLElement>, clip: Clip, mode: Drag["mode"]) => {
@@ -745,15 +760,15 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
       if (start !== null) patch = { start, trackId };
     } else if (drag.mode === "left") {
       const low = onTrack.reduce((value, c) => (c.start + c.duration <= orig.start + 1e-6 ? Math.max(value, c.start + c.duration) : value), 0);
-      const minStart = Math.max(low, limited ? orig.start - orig.inPoint : 0);
+      const minStart = Math.max(low, limited ? orig.start - orig.inPoint / orig.speed : 0);
       let next = orig.start + dt;
       next = snapEdge(next, points) ?? next;
       next = clamp(next, minStart, orig.start + orig.duration - MIN_CLIP);
       const delta = next - orig.start;
-      patch = { start: next, duration: orig.duration - delta, inPoint: limited ? orig.inPoint + delta : orig.inPoint };
+      patch = { start: next, duration: orig.duration - delta, inPoint: limited ? orig.inPoint + delta * orig.speed : orig.inPoint };
     } else {
       const high = onTrack.reduce((value, c) => (c.start >= orig.start + orig.duration - 1e-6 ? Math.min(value, c.start) : value), Infinity);
-      const mediaLimit = limited && originMedia ? orig.start + (originMedia.duration - orig.inPoint) : Infinity;
+      const mediaLimit = limited && originMedia ? orig.start + (originMedia.duration - orig.inPoint) / orig.speed : Infinity;
       const maxEnd = Math.max(orig.start + MIN_CLIP, Math.min(high, mediaLimit));
       let end = orig.start + orig.duration + dt;
       end = snapEdge(end, points) ?? end;
@@ -773,12 +788,75 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
     const drag = dragRef.current;
     dragRef.current = null;
     if (!drag?.moved) return;
-    // A drag that ended where it began should not leave an empty undo step.
     const last = pastRef.current[pastRef.current.length - 1];
     if (last && JSON.stringify(last.clips) === JSON.stringify(projectRef.current.clips)) {
       pastRef.current.pop();
       setHistoryVersion((v) => v + 1);
     }
+  };
+
+  /* ---- drag and drop ---- */
+
+  const hasFiles = (event: ReactDragEvent) => Array.from(event.dataTransfer.types).includes("Files");
+
+  const laneTarget = (event: ReactDragEvent, durationHint: number, item?: Media): DropHint | null => {
+    const lanes = lanesRef.current;
+    if (!lanes) return null;
+    const rect = lanes.getBoundingClientRect();
+    const tracks = projectRef.current.tracks;
+    let track: Track | undefined = tracks[clamp(Math.floor((event.clientY - rect.top) / TRACK_H), 0, tracks.length - 1)];
+    const fits = (t: Track | undefined) => !!t && !t.locked && (item ? isTrackCompatible(t, item) : t.kind !== "title");
+    if (!fits(track)) {
+      const kind: TrackKind = item?.kind === "audio" ? "audio" : "video";
+      const usable = tracks.filter((t) => t.kind === kind && !t.locked);
+      track = kind === "video" ? usable[usable.length - 1] : usable[0];
+    }
+    if (!track) return null;
+    const start = Math.max(0, (event.clientX - rect.left) / ppsRef.current);
+    return { trackId: track.id, start: freeStart(projectRef.current.clips, track.id, start, durationHint), duration: durationHint };
+  };
+
+  const onLaneDragOver = (event: ReactDragEvent<HTMLDivElement>) => {
+    const dragged = draggingMedia.current ? mediaRef.current.find((m) => m.id === draggingMedia.current) : undefined;
+    if (!dragged && !hasFiles(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "copy";
+    setDropHint(laneTarget(event, dragged?.duration ?? 4, dragged));
+  };
+
+  const onLaneDrop = (event: ReactDragEvent<HTMLDivElement>) => {
+    const dragged = draggingMedia.current ? mediaRef.current.find((m) => m.id === draggingMedia.current) : undefined;
+    const files = Array.from(event.dataTransfer.files);
+    if (!dragged && files.length === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const hint = laneTarget(event, dragged?.duration ?? 4, dragged);
+    setDropHint(null);
+    setFileDrag(false);
+    dragDepth.current = 0;
+    draggingMedia.current = null;
+    if (dragged) placeMedia([dragged], { start: hint?.start, trackId: hint?.trackId });
+    else void importFiles(files, { add: true, start: hint?.start, trackId: hint?.trackId });
+  };
+
+  const rootDragEnter = (event: ReactDragEvent) => {
+    if (!hasFiles(event)) return;
+    dragDepth.current += 1;
+    setFileDrag(true);
+  };
+  const rootDragLeave = (event: ReactDragEvent) => {
+    if (!hasFiles(event)) return;
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setFileDrag(false);
+  };
+  const rootDragOver = (event: ReactDragEvent) => { if (hasFiles(event)) event.preventDefault(); };
+  const rootDrop = (event: ReactDragEvent) => {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    dragDepth.current = 0;
+    setFileDrag(false);
+    void importFiles(Array.from(event.dataTransfer.files), { add: true });
   };
 
   /* ---- preview layers ---- */
@@ -797,42 +875,37 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
       if (track.kind === "audio") audioLayers.push({ clip, media: item, muted: track.muted });
     }
   }
-  const videoMuted = (clip: Clip) => trackById.get(clip.trackId)?.muted ?? false;
 
   /* ---- timeline geometry ---- */
 
-  const step = [1, 2, 5, 10, 15, 30, 60, 120].find((s) => s * pps >= 72) ?? 120;
+  const step = [1, 2, 5, 10, 15, 30, 60, 120, 300].find((s) => s * pps >= 72) ?? 300;
   const ticks = Array.from({ length: Math.floor(timelineSeconds / step) + 1 }, (_, i) => i * step);
   const lanesWidth = timelineSeconds * pps;
-  const innerStyle: CSSProperties = { width: LABEL_W + lanesWidth };
-  const scrollHeight = RULER_H + project.tracks.length * TRACK_H + 16;
+  const scrollHeight = RULER_H + project.tracks.length * TRACK_H + ADD_ROW_H + 14;
   const trackIndex = new Map(project.tracks.map((t, i) => [t.id, i]));
   const canUndo = pastRef.current.length > 0;
   const canRedo = futureRef.current.length > 0;
+  const empty = project.clips.length === 0;
+  const saveLabel = saveState === "saving" ? "Saving…" : saveState === "error" ? "Not saved" : "Saved in this browser";
 
   return (
-    <section
-      className="vs"
-      aria-label="Video studio"
-      onClick={(event) => {
-        // After a mouse click, release focus from buttons so Space always plays or pauses.
-        // Keyboard activation (detail 0) keeps its focus.
-        const button = (event.target as HTMLElement).closest("button");
-        if (event.detail > 0 && button) button.blur();
-      }}
-    >
+    <section className="vs" aria-label="Video studio" onClick={(event) => {
+      const button = (event.target as HTMLElement).closest("button");
+      if (event.detail > 0 && button) button.blur();
+    }} onDragEnter={rootDragEnter} onDragLeave={rootDragLeave} onDragOver={rootDragOver} onDrop={rootDrop}>
+      <input ref={fileRef} type="file" accept="video/*,audio/*,image/*,.mkv,.mov,.m4v,.flac,.opus" multiple hidden onChange={onPicked} />
+
       <header className="vs-head">
         <div className="vs-head-title">
           <span className="vs-head-icon"><Clapperboard size={18} /></span>
-          <div>
+          <div className="vs-head-text">
             <input className="vs-name" value={projectName} onChange={(e) => setProjectName(e.target.value)} aria-label="Project name" />
-            <div className="vs-status" role="status" aria-live="polite">{status}</div>
+            <div className="vs-status" role="status" aria-live="polite">{importing > 0 ? "Reading " + importing + (importing === 1 ? " file…" : " files…") : status}</div>
           </div>
         </div>
-        <div className="vs-head-meta">
-          <span>1080p</span><span>{FPS} fps</span><span>{aspect}</span>
-        </div>
-        <button className="vs-export" onClick={onExport}><Download size={16} /> Export video</button>
+        <span className={"vs-save " + saveState} title="Your project and files are saved in this browser, not uploaded anywhere.">{saveState === "saved" && <Check size={13} />}{saveLabel}</span>
+        <button className="vs-secondary" onClick={newProject} title="Start a new, empty project"><FilePlus size={15} /> New</button>
+        <button className="vs-export" onClick={() => { setPlaying(false); setExportOpen(true); }} disabled={empty} title={empty ? "Add a clip to export" : "Render your video to a file"}><Download size={16} /> Export</button>
       </header>
 
       <div className="vs-main">
@@ -841,29 +914,47 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
           <div className="vs-panel-head">
             <div className="vs-tabs" role="tablist">
               <button role="tab" aria-selected={panelTab === "media"} className={panelTab === "media" ? "active" : ""} onClick={() => setPanelTab("media")}><Film size={14} /> Media</button>
-              <button role="tab" aria-selected={panelTab === "titles"} className={panelTab === "titles" ? "active" : ""} onClick={() => setPanelTab("titles")}><Type size={14} /> Titles</button>
+              <button role="tab" aria-selected={panelTab === "text"} className={panelTab === "text" ? "active" : ""} onClick={() => setPanelTab("text")}><Type size={14} /> Text</button>
             </div>
-            <button className="vs-icon-btn" onClick={() => fileRef.current?.click()} aria-label="Import media" title="Import video, audio or images"><Upload size={16} /></button>
-            <input ref={fileRef} type="file" accept="video/*,audio/*,image/*" multiple hidden onChange={importFiles} />
+            <button className="vs-icon-btn" onClick={() => pickFiles(false)} aria-label="Import media" title="Import video, audio or photos"><Upload size={16} /></button>
           </div>
           {panelTab === "media" ? (
-            <>
-              <div className="vs-bin">
-                {media.map((item) => (
-                  <button className="vs-tile" key={item.id} onClick={() => addMedia(item)} title={"Add " + item.name + " at the playhead"}>
-                    <span className="vs-tile-thumb" style={thumbStyle(item)}>
-                      {item.kind === "audio" && <><Waveform seed={item.id} /><Music2 size={18} className="vs-tile-glyph" /></>}
-                      {item.kind === "video" && !item.thumb && <Film size={20} className="vs-tile-glyph" />}
-                      {item.kind === "image" && !item.thumb && <ImageIcon size={20} className="vs-tile-glyph" />}
-                      <span className="vs-tile-time">{item.kind === "image" ? "Image" : shortTime(item.duration)}</span>
-                      <span className="vs-tile-add"><Plus size={16} /></span>
-                    </span>
-                    <span className="vs-tile-name">{item.name}</span>
-                  </button>
-                ))}
+            media.length === 0 ? (
+              <div className="vs-bin-empty">
+                <button className="vs-dropzone" onClick={() => pickFiles(false)}>
+                  <Upload size={24} />
+                  <b>Import your media</b>
+                  <span>Video, music or photos from your device. You can also drop files here.</span>
+                </button>
               </div>
-              <p className="vs-panel-foot">{media.length} items. Import video, audio or images from your device. Files stay in this browser.</p>
-            </>
+            ) : (
+              <>
+                <div className="vs-bin">
+                  {media.map((item) => (
+                    <div className="vs-tile" key={item.id}>
+                      <button
+                        className="vs-tile-main"
+                        draggable
+                        onDragStart={(e) => { draggingMedia.current = item.id; e.dataTransfer.setData(MEDIA_MIME, item.id); e.dataTransfer.effectAllowed = "copy"; }}
+                        onDragEnd={() => { draggingMedia.current = null; setDropHint(null); }}
+                        onClick={() => placeMedia([item])}
+                        title={"Add " + item.name + " at the playhead, or drag it onto the timeline"}
+                      >
+                        <span className="vs-tile-thumb" style={thumbStyle(item)}>
+                          {item.kind === "audio" && <><Waveform peaks={item.peaks} /><Music2 size={18} className="vs-tile-glyph" /></>}
+                          {item.kind === "video" && !item.strip && <Film size={20} className="vs-tile-glyph" />}
+                          <span className="vs-tile-time">{item.kind === "image" ? "Photo" : shortTime(item.duration)}</span>
+                          <span className="vs-tile-add"><Plus size={16} /></span>
+                        </span>
+                        <span className="vs-tile-name">{item.name}</span>
+                      </button>
+                      <button className="vs-tile-remove" onClick={() => removeMediaItem(item)} aria-label={"Remove " + item.name + " from the media panel"} title="Remove from media panel"><X size={13} /></button>
+                    </div>
+                  ))}
+                </div>
+                <p className="vs-panel-foot">Click a clip to add it at the playhead, or drag it onto a track.</p>
+              </>
+            )
           ) : (
             <div className="vs-presets">
               {titlePresets.map((preset) => (
@@ -882,60 +973,113 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
           <div className="vs-stage">
             <div className="vs-frame" style={{ "--ratio": ASPECTS[aspect] } as CSSProperties}>
               {visualLayers.map(({ clip, media: item }) => (
-                <MediaLayer key={clip.id} clip={clip} media={item} time={playhead} playing={playing} muted={videoMuted(clip)} />
+                <MediaLayer key={clip.id} clip={clip} media={item} time={playhead} playing={playing} muted={trackById.get(clip.trackId)?.muted ?? false} asAudio={false} />
               ))}
               {audioLayers.map(({ clip, media: item, muted }) => (
-                <MediaLayer key={clip.id} clip={clip} media={item} time={playhead} playing={playing} muted={muted} />
+                <MediaLayer key={clip.id} clip={clip} media={item} time={playhead} playing={playing} muted={muted} asAudio />
               ))}
               {titleLayers.map((clip) => (
-                <div className={"vs-title-overlay " + (clip.titleStyle ?? "center")} style={{ opacity: clip.opacity }} key={clip.id}>
+                <div className={"vs-title-overlay " + (clip.titleStyle ?? "center")} style={{ opacity: clip.opacity * fadeFactor(clip, playhead), "--tc": clip.color ?? "#fff", "--ts": clip.size ?? 1 } as CSSProperties} key={clip.id}>
                   <div className="vs-title-text">{clip.text}</div>
                 </div>
               ))}
-              {visualLayers.length === 0 && titleLayers.length === 0 && (
-                <div className="vs-empty"><Clapperboard size={30} /><b>Nothing at this point</b><span>Move the playhead over a clip, or add one from the media panel.</span></div>
+              {empty && (
+                <div className="vs-empty welcome">
+                  <Clapperboard size={34} />
+                  <b>Make your first video</b>
+                  <span>Add clips, music or photos. They are placed on the timeline in order, ready to trim, split and export.</span>
+                  <button className="vs-cta" onClick={() => pickFiles(true)}><Upload size={16} /> Add media</button>
+                  <small>or drag files anywhere into this window</small>
+                </div>
               )}
-              {selected && <span className="vs-chip">Selected: {seconds1(selected.duration)}</span>}
+              {!empty && visualLayers.length === 0 && titleLayers.length === 0 && (
+                <div className="vs-empty"><b>Nothing at this point</b><span>Move the playhead over a clip.</span></div>
+              )}
+              {selected && <span className="vs-chip">{selected.label} · {seconds1(selected.duration)}</span>}
             </div>
           </div>
         </div>
 
         {/* Inspector */}
         <aside className="vs-panel vs-inspector" aria-label="Inspector">
-          <div className="vs-panel-head"><b>{selected ? "Clip" : "Project"}</b></div>
+          <div className="vs-panel-head"><b>{selected ? "Clip settings" : "Project"}</b></div>
           {selected ? (
             <div className="vs-fields">
-              <div className="vs-clip-title">{selected.label}{selectedMedia ? <small>{selectedMedia.kind === "color" ? "Generated clip" : selectedMedia.kind}</small> : <small>title</small>}</div>
+              <label className="vs-field">Name
+                <input className="vs-input" value={selected.label} onChange={(e) => updateClip(selected.id, { label: e.target.value }, true)} onBlur={endEdit} />
+              </label>
               <dl className="vs-readout">
                 <div><dt>Start</dt><dd>{timecode(selected.start)}</dd></div>
                 <div><dt>Length</dt><dd>{seconds1(selected.duration)}</dd></div>
               </dl>
+
               {selected.text !== undefined && (
                 <>
                   <label className="vs-field">Text
-                    <textarea rows={2} value={selected.text} onChange={(e) => updateClip(selected.id, { text: e.target.value }, true)} onBlur={() => { editGuard.current = false; }} />
+                    <textarea rows={3} value={selected.text} placeholder="Type your text" onChange={(e) => updateClip(selected.id, { text: e.target.value }, true)} onBlur={endEdit} />
                   </label>
                   <div className="vs-field">Style
                     <div className="vs-segment">
                       {(["center", "lower", "subtitle"] as TitleStyle[]).map((style) => (
-                        <button key={style} className={selected.titleStyle === style ? "active" : ""} onClick={() => updateClip(selected.id, { titleStyle: style })}>
-                          {style === "lower" ? "Lower third" : style === "center" ? "Center" : "Subtitle"}
-                        </button>
+                        <button key={style} className={selected.titleStyle === style ? "active" : ""} onClick={() => updateClip(selected.id, { titleStyle: style })}>{style === "lower" ? "Lower third" : style === "center" ? "Center" : "Subtitle"}</button>
                       ))}
                     </div>
                   </div>
+                  <div className="vs-field">Color
+                    <div className="vs-swatches">
+                      {TEXT_COLORS.map((color) => (
+                        <button key={color} className={(selected.color ?? "#ffffff") === color ? "active" : ""} style={{ background: color }} aria-label={"Text color " + color} onClick={() => updateClip(selected.id, { color })} />
+                      ))}
+                    </div>
+                  </div>
+                  <label className="vs-field">Size <output>{Math.round((selected.size ?? 1) * 100)}%</output>
+                    <input type="range" min={0.5} max={2} step={0.05} value={selected.size ?? 1} onChange={(e) => updateClip(selected.id, { size: Number(e.target.value) }, true)} onPointerUp={endEdit} onBlur={endEdit} />
+                  </label>
                 </>
               )}
-              {(selectedMedia?.kind === "video" || selectedMedia?.kind === "audio") && (
+
+              {selectedMedia && selectedMedia.kind !== "image" && (
+                <div className="vs-field">Speed
+                  <div className="vs-segment wrap">
+                    {SPEEDS.map((value) => (
+                      <button key={value} className={selected.speed === value ? "active" : ""} onClick={() => setSpeed(selected, value)}>{value}×</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedMedia && selectedMedia.kind !== "image" && (
                 <label className="vs-field">Volume <output>{Math.round(selected.volume * 100)}%</output>
-                  <input type="range" min={0} max={1} step={0.01} value={selected.volume} onChange={(e) => updateClip(selected.id, { volume: Number(e.target.value) }, true)} onPointerUp={() => { editGuard.current = false; }} onBlur={() => { editGuard.current = false; }} />
+                  <input type="range" min={0} max={1} step={0.01} value={selected.volume} onChange={(e) => updateClip(selected.id, { volume: Number(e.target.value) }, true)} onPointerUp={endEdit} onBlur={endEdit} />
                 </label>
               )}
-              {selectedMedia?.kind !== "audio" && (
+
+              {selectedTrack?.kind !== "audio" && (
                 <label className="vs-field">Opacity <output>{Math.round(selected.opacity * 100)}%</output>
-                  <input type="range" min={0} max={1} step={0.01} value={selected.opacity} onChange={(e) => updateClip(selected.id, { opacity: Number(e.target.value) }, true)} onPointerUp={() => { editGuard.current = false; }} onBlur={() => { editGuard.current = false; }} />
+                  <input type="range" min={0} max={1} step={0.01} value={selected.opacity} onChange={(e) => updateClip(selected.id, { opacity: Number(e.target.value) }, true)} onPointerUp={endEdit} onBlur={endEdit} />
                 </label>
               )}
+
+              {selectedTrack?.kind === "video" && selectedMedia && (
+                <>
+                  <div className="vs-field">Framing
+                    <div className="vs-segment">
+                      <button className={selected.fit === "contain" ? "active" : ""} onClick={() => updateClip(selected.id, { fit: "contain" })}>Fit</button>
+                      <button className={selected.fit === "cover" ? "active" : ""} onClick={() => updateClip(selected.id, { fit: "cover" })}>Fill</button>
+                    </div>
+                  </div>
+                  <label className="vs-field">Zoom <output>{Math.round(selected.zoom * 100)}%</output>
+                    <input type="range" min={1} max={3} step={0.05} value={selected.zoom} onChange={(e) => updateClip(selected.id, { zoom: Number(e.target.value) }, true)} onPointerUp={endEdit} onBlur={endEdit} />
+                  </label>
+                </>
+              )}
+
+              <label className="vs-field">Fade in <output>{selected.fadeIn.toFixed(1)}s</output>
+                <input type="range" min={0} max={Math.min(5, selected.duration / 2)} step={0.1} value={Math.min(selected.fadeIn, selected.duration / 2)} onChange={(e) => updateClip(selected.id, { fadeIn: Number(e.target.value) }, true)} onPointerUp={endEdit} onBlur={endEdit} />
+              </label>
+              <label className="vs-field">Fade out <output>{selected.fadeOut.toFixed(1)}s</output>
+                <input type="range" min={0} max={Math.min(5, selected.duration / 2)} step={0.1} value={Math.min(selected.fadeOut, selected.duration / 2)} onChange={(e) => updateClip(selected.id, { fadeOut: Number(e.target.value) }, true)} onPointerUp={endEdit} onBlur={endEdit} />
+              </label>
             </div>
           ) : (
             <div className="vs-fields">
@@ -950,49 +1094,48 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
                   ))}
                 </div>
               </div>
-              <p className="vs-hint">Select a clip on the timeline to change its text, volume or opacity. Drag a clip to move it, drag its edges to trim.</p>
+              <p className="vs-hint">16:9 suits YouTube and TV, 9:16 suits phones and Reels, 1:1 suits feeds. Select a clip to edit it.</p>
               <ul className="vs-keys">
                 <li><kbd>Space</kbd> play or pause</li>
                 <li><kbd>S</kbd> split at playhead</li>
-                <li><kbd>←</kbd> <kbd>→</kbd> step one frame</li>
-                <li><kbd>Delete</kbd> remove clip</li>
-                <li><kbd>Ctrl</kbd> <kbd>Z</kbd> undo</li>
+                <li><kbd>Delete</kbd> remove, <kbd>Shift</kbd> + <kbd>Delete</kbd> removes and closes the gap</li>
+                <li><kbd>←</kbd> <kbd>→</kbd> one frame, with <kbd>Shift</kbd> one second</li>
+                <li><kbd>Ctrl</kbd> + <kbd>Z</kbd> undo, <kbd>Ctrl</kbd> + <kbd>D</kbd> duplicate</li>
+                <li><kbd>+</kbd> <kbd>-</kbd> zoom the timeline</li>
               </ul>
             </div>
           )}
         </aside>
       </div>
 
-      {/* Transport + timeline + toolbar */}
+      {/* Transport, timeline, toolbar */}
       <div className="vs-panel vs-bottom">
         <div className="vs-transport">
-          <div className="vs-timecode" aria-label="Current time">
-            <b>{timecode(playhead)}</b><span>/ {timecode(contentEnd)}</span>
-          </div>
+          <div className="vs-timecode" aria-label="Current time"><b>{timecode(playhead)}</b><span>/ {timecode(contentEnd)}</span></div>
           <div className="vs-controls">
-            <button className="vs-icon-btn" aria-label="Go to start" onClick={() => { setPlaying(false); seek(0); }}><SkipBack size={17} /></button>
-            <button className="vs-icon-btn" aria-label="Back one frame" onClick={() => actions.current?.step(-1 / FPS)}><StepBack size={17} /></button>
-            <button className="vs-play" aria-label={playing ? "Pause" : "Play"} onClick={togglePlay}>{playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}</button>
-            <button className="vs-icon-btn" aria-label="Forward one frame" onClick={() => actions.current?.step(1 / FPS)}><StepForward size={17} /></button>
-            <button className="vs-icon-btn" aria-label="Go to end" onClick={() => actions.current?.seekEnd()}><SkipForward size={17} /></button>
+            <button className="vs-icon-btn" aria-label="Go to start" title="Go to start (Home)" onClick={() => { setPlaying(false); seek(0); }}><SkipBack size={17} /></button>
+            <button className="vs-icon-btn" aria-label="Back one frame" title="Back one frame (←)" onClick={() => actions.current?.step(-1 / FPS)}><StepBack size={17} /></button>
+            <button className="vs-play" aria-label={playing ? "Pause" : "Play"} title={playing ? "Pause (Space)" : "Play (Space)"} onClick={togglePlay}>{playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}</button>
+            <button className="vs-icon-btn" aria-label="Forward one frame" title="Forward one frame (→)" onClick={() => actions.current?.step(1 / FPS)}><StepForward size={17} /></button>
+            <button className="vs-icon-btn" aria-label="Go to end" title="Go to end (End)" onClick={() => actions.current?.seekEnd()}><SkipForward size={17} /></button>
           </div>
           <div className="vs-zoom">
             <ZoomOut size={15} />
-            <input type="range" min={20} max={200} step={2} value={pps} onChange={(e) => setPps(Number(e.target.value))} aria-label="Timeline zoom" />
+            <input type="range" min={12} max={300} step={2} value={pps} onChange={(e) => setPps(Number(e.target.value))} aria-label="Timeline zoom" />
             <ZoomIn size={15} />
+            <button className="vs-icon-btn" onClick={fitTimeline} aria-label="Fit timeline to window" title="Fit timeline to window" disabled={empty}><Maximize2 size={15} /></button>
           </div>
         </div>
 
-        <div className="vs-tl-scroll" ref={scrollRef} style={{ height: scrollHeight }}>
-          <div className="vs-tl-inner" style={innerStyle}>
+        <div className="vs-tl-scroll" ref={scrollRef} style={{ height: Math.min(scrollHeight, 252) }}>
+          <div className="vs-tl-inner" style={{ width: LABEL_W + lanesWidth }}>
             <div className="vs-ruler-row" style={{ height: RULER_H }}>
               <div className="vs-ruler-spacer" style={{ width: LABEL_W }} />
               <div
-                className="vs-ruler"
-                ref={rulerRef}
+                className="vs-ruler" ref={rulerRef}
                 style={{ width: lanesWidth, backgroundSize: (step * pps) / 5 + "px 8px" }}
-                onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); scrubbing.current = true; setPlaying(false); scrubTo(e); }}
-                onPointerMove={(e) => { if (scrubbing.current) scrubTo(e); }}
+                onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); scrubbing.current = true; setPlaying(false); seek(timeAt(e.clientX, rulerRef.current)); }}
+                onPointerMove={(e) => { if (scrubbing.current) seek(timeAt(e.clientX, rulerRef.current)); }}
                 onPointerUp={() => { scrubbing.current = false; }}
                 onPointerCancel={() => { scrubbing.current = false; }}
               >
@@ -1002,26 +1145,32 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
 
             <div className="vs-body">
               <div className="vs-labels" style={{ width: LABEL_W }}>
-                {project.tracks.map((track) => (
-                  <div className={"vs-label" + (track.locked ? " locked" : "")} style={{ height: TRACK_H }} key={track.id}>
-                    <span className="vs-label-name">{track.name}</span>
-                    <span className="vs-label-actions">
-                      {track.kind === "audio" ? (
-                        <button aria-label={(track.muted ? "Unmute " : "Mute ") + track.name} aria-pressed={track.muted} onClick={() => updateTrack(track.id, { muted: !track.muted })}>{track.muted ? <VolumeX size={14} /> : <Volume2 size={14} />}</button>
-                      ) : (
-                        <button aria-label={(track.hidden ? "Show " : "Hide ") + track.name} aria-pressed={track.hidden} onClick={() => updateTrack(track.id, { hidden: !track.hidden })}>{track.hidden ? <EyeOff size={14} /> : <Eye size={14} />}</button>
-                      )}
-                      <button aria-label={(track.locked ? "Unlock " : "Lock ") + track.name} aria-pressed={track.locked} onClick={() => updateTrack(track.id, { locked: !track.locked })}>{track.locked ? <Lock size={14} /> : <Unlock size={14} />}</button>
-                    </span>
-                  </div>
-                ))}
+                {project.tracks.map((track) => {
+                  const removable = track.kind !== "title" && project.tracks.filter((t) => t.kind === track.kind).length > 1 && !project.clips.some((c) => c.trackId === track.id);
+                  return (
+                    <div className={"vs-label" + (track.locked ? " locked" : "")} style={{ height: TRACK_H }} key={track.id}>
+                      <span className="vs-label-name" title={track.name}>{track.name}</span>
+                      <span className="vs-label-actions">
+                        {track.kind === "audio" ? (
+                          <button title={track.muted ? "Unmute track" : "Mute track"} aria-label={(track.muted ? "Unmute " : "Mute ") + track.name} aria-pressed={track.muted} onClick={() => updateTrack(track.id, { muted: !track.muted })}>{track.muted ? <VolumeX size={14} /> : <Volume2 size={14} />}</button>
+                        ) : (
+                          <button title={track.hidden ? "Show track" : "Hide track"} aria-label={(track.hidden ? "Show " : "Hide ") + track.name} aria-pressed={track.hidden} onClick={() => updateTrack(track.id, { hidden: !track.hidden })}>{track.hidden ? <EyeOff size={14} /> : <Eye size={14} />}</button>
+                        )}
+                        <button title={track.locked ? "Unlock track" : "Lock track"} aria-label={(track.locked ? "Unlock " : "Lock ") + track.name} aria-pressed={track.locked} onClick={() => updateTrack(track.id, { locked: !track.locked })}>{track.locked ? <Lock size={14} /> : <Unlock size={14} />}</button>
+                        {removable && <button className="remove" title="Remove empty track" aria-label={"Remove " + track.name} onClick={() => removeTrack(track)}><X size={13} /></button>}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
 
               <div
-                className="vs-lanes"
-                ref={lanesRef}
+                className="vs-lanes" ref={lanesRef}
                 style={{ width: lanesWidth, height: project.tracks.length * TRACK_H }}
-                onPointerDown={() => setSelectedId(null)}
+                onPointerDown={(e) => { setSelectedId(null); seek(timeAt(e.clientX, lanesRef.current)); }}
+                onDragOver={onLaneDragOver}
+                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropHint(null); }}
+                onDrop={onLaneDrop}
               >
                 {project.tracks.map((track, row) => (
                   <div className={"vs-lane " + track.kind + (track.locked ? " locked" : "") + (track.hidden || track.muted ? " off" : "")} style={{ top: row * TRACK_H, height: TRACK_H }} key={track.id} />
@@ -1030,23 +1179,16 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
                   const track = trackById.get(clip.trackId);
                   const item = clip.mediaId ? mediaMap.get(clip.mediaId) : undefined;
                   const isSelected = clip.id === selectedId;
-                  const kindClass = track?.kind === "audio" ? (track.id === "t-a2" ? "music" : "audio") : (track?.kind ?? "video");
-                  const style: CSSProperties = {
-                    left: clip.start * pps,
-                    width: Math.max(clip.duration * pps, 6),
-                    top: (trackIndex.get(clip.trackId) ?? 0) * TRACK_H + 4,
-                    height: TRACK_H - 8,
-                  };
-                  const body: CSSProperties = track?.kind === "video" && item ? thumbStyle(item) : {};
-                  if (track?.kind === "video" && item?.kind === "video" && item.thumb) {
-                    body.backgroundRepeat = "repeat-x";
-                    body.backgroundSize = "auto 100%";
-                  }
+                  const row = trackIndex.get(clip.trackId) ?? 0;
+                  const kindClass = track?.kind === "audio" ? "audio" : (track?.kind ?? "video");
+                  const width = Math.max(clip.duration * pps, 6);
+                  const peakFrom = item ? clip.inPoint / item.duration : 0;
+                  const peakTo = item ? (clip.inPoint + clip.duration * clip.speed) / item.duration : 1;
                   return (
                     <div
                       key={clip.id}
                       className={"vs-clip " + kindClass + (isSelected ? " selected" : "") + (track?.locked ? " locked" : "")}
-                      style={style}
+                      style={{ left: clip.start * pps, width, top: row * TRACK_H + 4, height: TRACK_H - 8 }}
                       onPointerDown={(e) => beginDrag(e, clip, "move")}
                       onPointerMove={moveDrag}
                       onPointerUp={endDrag}
@@ -1057,10 +1199,12 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
                       aria-pressed={isSelected}
                       onKeyDown={(e) => { if (e.key === "Enter") setSelectedId(clip.id); }}
                     >
-                      <span className="vs-clip-fill" style={body} />
-                      {track?.kind === "audio" && <Waveform seed={clip.mediaId ?? clip.id} />}
+                      {track?.kind === "video" && item && <FrameStrip media={item} clip={clip} pps={pps} height={TRACK_H - 10} />}
+                      {track?.kind === "audio" && <Waveform peaks={item?.peaks} from={peakFrom} to={peakTo} />}
                       <span className="vs-clip-label">
-                        {track?.kind === "title" ? (clip.text || clip.label) : track?.kind === "audio" ? <><AudioLines size={11} /> {clip.label}</> : clip.label}
+                        {track?.kind === "audio" && <AudioLines size={11} />}
+                        {track?.kind === "title" ? (clip.text?.trim() || "Empty text") : clip.label}
+                        {clip.speed !== 1 && <em>{clip.speed}×</em>}
                       </span>
                       {!track?.locked && (
                         <>
@@ -1071,7 +1215,17 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
                     </div>
                   );
                 })}
-                {project.clips.length === 0 && <div className="vs-lanes-empty">Your timeline is empty. Click a clip in the media panel to start.</div>}
+                {dropHint && (
+                  <div className="vs-drop-hint" style={{ left: dropHint.start * pps, width: Math.max(dropHint.duration * pps, 24), top: (trackIndex.get(dropHint.trackId) ?? 0) * TRACK_H + 4, height: TRACK_H - 8 }} />
+                )}
+                {empty && !dropHint && <div className="vs-lanes-empty">Drop media here, or click a clip in the media panel.</div>}
+              </div>
+            </div>
+
+            <div className="vs-add-row" style={{ height: ADD_ROW_H }}>
+              <div className="vs-add-label" style={{ width: LABEL_W }}>
+                <button onClick={() => addTrack("video")} title="Add a video track above the others"><Plus size={12} /> Video</button>
+                <button onClick={() => addTrack("audio")} title="Add an audio track"><Plus size={12} /> Audio</button>
               </div>
             </div>
 
@@ -1081,22 +1235,32 @@ export default function VideoStudio({ onExport }: { onExport: () => void }) {
 
         <div className="vs-toolbar">
           <div className="vs-tool-group">
-            <ToolButton icon={Undo2} label="Undo" onClick={undo} disabled={!canUndo} />
-            <ToolButton icon={Redo2} label="Redo" onClick={redo} disabled={!canRedo} />
-            <ToolButton icon={RotateCcw} label="Reset all" onClick={resetAll} disabled={project.clips.length === 0} />
+            <ToolButton icon={Undo2} label="Undo" hint="Ctrl+Z" onClick={undo} disabled={!canUndo} />
+            <ToolButton icon={Redo2} label="Redo" hint="Ctrl+Shift+Z" onClick={redo} disabled={!canRedo} />
+            <ToolButton icon={RotateCcw} label="Clear all" onClick={clearTimeline} disabled={empty} />
           </div>
           <div className="vs-tool-group center">
-            <ToolButton icon={Scissors} label="Split" onClick={split} />
-            <ToolButton icon={Copy} label="Duplicate" onClick={duplicate} disabled={!selected} />
-            <ToolButton icon={Trash2} label="Delete" onClick={remove} disabled={!selected} />
+            <ToolButton icon={Scissors} label="Split" hint="S" onClick={split} disabled={empty} />
+            <ToolButton icon={Copy} label="Duplicate" hint="Ctrl+D" onClick={duplicate} disabled={!selected} />
+            <ToolButton icon={Trash2} label="Delete" hint="Delete" onClick={() => remove(false)} disabled={!selected} />
+            <ToolButton icon={Unlink} label="Detach audio" onClick={detachAudio} disabled={!(selectedMedia?.kind === "video" && selectedTrack?.kind === "video")} />
             <ToolButton icon={Magnet} label="Snap" onClick={() => setSnapOn((v) => !v)} active={snapOn} />
           </div>
           <div className="vs-tool-group right">
-            <ToolButton icon={Type} label="Add title" onClick={() => addTitle(titlePresets[0])} />
-            <ToolButton icon={Upload} label="Import" onClick={() => fileRef.current?.click()} />
+            <ToolButton icon={Type} label="Add text" onClick={() => addTitle(titlePresets[0])} />
+            <ToolButton icon={ImageIcon} label="Import" onClick={() => pickFiles(false)} />
           </div>
         </div>
       </div>
+
+      {fileDrag && (
+        <div className="vs-drop-overlay" aria-hidden="true">
+          <Upload size={34} />
+          <b>Drop to add to your video</b>
+          <span>Video, music and photos are placed on the timeline.</span>
+        </div>
+      )}
+      {exportOpen && <ExportDialog project={project} media={mediaMap} aspect={aspect} name={projectName} onClose={() => setExportOpen(false)} />}
     </section>
   );
 }
