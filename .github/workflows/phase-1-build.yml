@@ -2,6 +2,7 @@ name: Phase 1 build check
 
 on:
   pull_request:
+  workflow_dispatch:
   push:
     branches:
       - main
