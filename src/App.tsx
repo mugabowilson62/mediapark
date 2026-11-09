@@ -5,6 +5,7 @@ import {
   Newspaper, Plus, Search, Settings2, Sparkles, TrendingUp,
   Video, WandSparkles, X, Play, Radio, Heart, Bookmark, Send,
 } from "lucide-react";
+import VideoStudio from "./VideoStudio";
 
 type Feature = {
   title: string;
@@ -99,6 +100,13 @@ function App() {
     setNotice(name + " is part of the Mediapark plan. This is the first frontend preview; its service will be connected in a later step.");
   };
 
+  const openVideoStudio = () => {
+    setActiveNav("Video studio");
+    setExpandedGroups((current) => (current.includes("CREATE") ? current : [...current, "CREATE"]));
+    setMobileOpen(false);
+    window.scrollTo({ top: 0 });
+  };
+
   const navGroups = [
     { label: "EXPLORE", items: [
       { name: "Home", icon: Compass }, { name: "Discover", icon: TrendingUp }, { name: "Videos", icon: MonitorPlay }, { name: "Music", icon: Headphones }, { name: "Live news", icon: Newspaper },
@@ -144,7 +152,7 @@ function App() {
             </button>
             {isExpanded && <div className="nav-subitems">
               {group.items.map(({ name, icon: Icon }) => (
-                <button className={"nav-item " + (activeNav === name ? "active" : "")} aria-current={activeNav === name ? "page" : undefined} key={name} onClick={() => { setActiveNav(name); setMobileOpen(false); if (!["Home", "Discover", "Videos", "Music", "Live news", "Saved"].includes(name)) showNotice(name); }}>
+                <button className={"nav-item " + (activeNav === name ? "active" : "")} aria-current={activeNav === name ? "page" : undefined} key={name} onClick={() => { setActiveNav(name); setMobileOpen(false); if (!["Home", "Discover", "Videos", "Music", "Live news", "Saved", "Video studio"].includes(name)) showNotice(name); }}>
                   <Icon size={18} strokeWidth={1.8} /><span>{name}</span>{name === "Messages" && <i className="unread-dot" />}
                 </button>
               ))}
@@ -175,7 +183,7 @@ function App() {
         </header>
 
         <div className="page-content">
-          {musicStudioOpen && <section className="music-studio" aria-labelledby="music-studio-title">
+          {musicStudioOpen && activeNav !== "Video studio" && <section className="music-studio" aria-labelledby="music-studio-title">
             <div className="music-studio-heading">
               <div><div className="overline">PHASE 2 · FIRST WORKING MEDIA TOOL</div><h2 id="music-studio-title">Your Music Studio</h2><p>Play audio files from your device in this browser. Your files stay on your device.</p></div>
               <button className="icon-button" onClick={() => setMusicStudioOpen(false)} aria-label="Close music studio"><X size={18} /></button>
@@ -210,6 +218,9 @@ function App() {
 
 
 
+          {activeNav === "Video studio" ? (
+            <VideoStudio />
+          ) : (<>
           <section className="gahi-promo" aria-labelledby="gahi-promo-title">
             <div className="gahi-promo-copy">
               <div className="gahi-kicker"><span className="gahi-sound-dot" /> THE SOUND OF A NEW GENERATION</div>
@@ -273,7 +284,7 @@ function App() {
 
           <section className="section-block">
             <div className="section-heading"><div><div className="overline">YOUR TOOLKIT</div><h2>What are we making today?</h2><p>A whole creative universe, one place to start.</p></div><button className="subtle-link" onClick={() => showNotice("All tools")}>Explore all tools <ChevronRight size={16} /></button></div>
-            <div className="feature-grid">{visibleFeatures.map(({ title, description, icon: Icon, label, tone }) => <button className="feature-card" key={title} onClick={() => title === "AI Music Studio" ? setMusicStudioOpen(true) : showNotice(title)}><div className="feature-card-top"><span className="feature-wildlife" aria-hidden="true">{title === "AI Music Studio" ? "🦜" : title === "Audio workshop" ? "🐒" : title === "Video editor" ? "🦓" : title === "Image lab" ? "🦋" : title === "Game zone" ? "🐸" : "🦩"}</span><span className={"feature-icon " + tone}><Icon size={21} /></span><span className={"feature-label " + tone}>{label}</span></div><h3>{title}</h3><p>{description}</p><span className="feature-link">Open workspace <ChevronRight size={15} /></span></button>)}{visibleFeatures.length === 0 && <div className="empty-state">No tools match “{search}”. Try another search.</div>}</div>
+            <div className="feature-grid">{visibleFeatures.map(({ title, description, icon: Icon, label, tone }) => <button className="feature-card" key={title} onClick={() => title === "AI Music Studio" ? setMusicStudioOpen(true) : title === "Video editor" ? openVideoStudio() : showNotice(title)}><div className="feature-card-top"><span className="feature-wildlife" aria-hidden="true">{title === "AI Music Studio" ? "🦜" : title === "Audio workshop" ? "🐒" : title === "Video editor" ? "🦓" : title === "Image lab" ? "🦋" : title === "Game zone" ? "🐸" : "🦩"}</span><span className={"feature-icon " + tone}><Icon size={21} /></span><span className={"feature-label " + tone}>{label}</span></div><h3>{title}</h3><p>{description}</p><span className="feature-link">Open workspace <ChevronRight size={15} /></span></button>)}{visibleFeatures.length === 0 && <div className="empty-state">No tools match “{search}”. Try another search.</div>}</div>
           </section>
 
           <section className="section-block discover-section">
@@ -288,6 +299,7 @@ function App() {
             </div>
           </section>
           <footer className="page-footer"><span className="footer-wildlife" aria-label="Wildlife">🦋 🐢 🐦</span><span>© 2026 Mediapark</span><span>Built for your creative universe <Sparkles size={13} /></span><button onClick={() => showNotice("Feedback")}>Send feedback</button></footer>
+          </>)}
         </div>
       </main>
     </div>
