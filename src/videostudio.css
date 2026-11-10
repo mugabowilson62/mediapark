@@ -274,3 +274,39 @@
 
 @media(max-width:900px){.vs-save{display:none}}
 @media(max-width:760px){.vs-head-title{flex-basis:100%}.vs-secondary,.vs-export{margin-left:0}}
+
+
+/* ---- Fixed desktop editing workspace (preserves the full editor engine) ---- */
+@media (min-width: 1181px) {
+  .main-area:has(.vs) {
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .page-content:has(.vs) {
+    width: 100%;
+    max-width: none;
+    height: calc(100vh - 76px);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 20px 12px;
+    overflow: hidden;
+  }
+
+  .page-content:has(.vs) > .vs {
+    flex: 1 1 auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .vs-main {
+    grid-template-columns: minmax(240px, 24%) minmax(0, 1fr) minmax(220px, 20%);
+    min-height: 0;
+  }
+
+  .vs-bottom {
+    flex: 0 0 auto;
+  }
+}
