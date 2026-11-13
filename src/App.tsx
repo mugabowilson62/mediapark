@@ -168,11 +168,11 @@ function App() {
   );
 
   return (
-    <div className="app-shell" id="top">
-      {mobileOpen && <button className="mobile-scrim" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
-      {sidebar}
+    <div className={"app-shell" + (activeNav === "Video studio" ? " studio-active" : "")} id="top">
+      {activeNav !== "Video studio" && mobileOpen && <button className="mobile-scrim" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
+      {activeNav !== "Video studio" && sidebar}
       <main className="main-area">
-        <header className="topbar">
+        {activeNav !== "Video studio" && <header className="topbar">
           <button className="icon-button mobile-menu" aria-label="Open menu" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <X size={20} /> : <Menu size={20} />}</button>
           <div className="breadcrumbs"><span>Workspace</span><ChevronRight size={14} /><b>{activeNav}</b></div>
           <div className="top-actions">
@@ -180,7 +180,7 @@ function App() {
             <button className="icon-button notification-button" aria-label="Notifications" onClick={() => showNotice("Notifications")}><Bell size={18} /><i /></button>
             <button className="avatar avatar-top" aria-label="Open profile" onClick={() => showNotice("Profile")}>W</button>
           </div>
-        </header>
+        </header>}
 
         <div className="page-content">
           {musicStudioOpen && activeNav !== "Video studio" && <section className="music-studio" aria-labelledby="music-studio-title">
@@ -219,7 +219,7 @@ function App() {
 
 
           {activeNav === "Video studio" ? (
-            <VideoStudio />
+            <VideoStudio onExit={() => setActiveNav("Home")} />
           ) : (<>
           <section className="gahi-promo" aria-labelledby="gahi-promo-title">
             <div className="gahi-promo-copy">
