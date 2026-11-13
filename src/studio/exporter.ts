@@ -24,11 +24,12 @@ type Runtime = {
   playing: boolean;
 };
 
+// Prefer Chrome's generally more stable WebM recording path; MP4 is a fallback.
 const MIME_CANDIDATES: Array<{ mime: string; extension: string }> = [
-  { mime: "video/mp4;codecs=avc1.42E01E,mp4a.40.2", extension: "mp4" },
-  { mime: "video/webm;codecs=vp9,opus", extension: "webm" },
   { mime: "video/webm;codecs=vp8,opus", extension: "webm" },
+  { mime: "video/webm;codecs=vp9,opus", extension: "webm" },
   { mime: "video/webm", extension: "webm" },
+  { mime: "video/mp4;codecs=avc1.42E01E,mp4a.40.2", extension: "mp4" },
 ];
 
 export function exportSupported(): boolean {
@@ -260,7 +261,7 @@ export async function exportVideo(options: ExportOptions): Promise<ExportResult>
         runtime.image = image;
       } else {
         const element = document.createElement(item.kind === "video" && track.kind === "video" ? "video" : "audio");
-        element.preload = "auto";
+        element.preload = "metadata";
         element.src = item.url;
         element.playbackRate = clip.speed;
         const source = audioContext.createMediaElementSource(element);
@@ -336,7 +337,7 @@ export async function exportVideo(options: ExportOptions): Promise<ExportResult>
     };
 
     render(0);
-    recorder.start(250);
+    recorder.start(1000);
     await new Promise<void>((resolve) => {
       const begin = performance.now();
       const tick = (now: number) => {
