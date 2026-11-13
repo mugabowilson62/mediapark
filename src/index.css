@@ -451,3 +451,8 @@ body{
 .nav-subitems{padding-left:5px;border-left:1px solid rgba(166,230,161,.12);margin-left:8px}
 .nav-subitems .nav-item{height:35px;font-size:11px;padding-left:10px}
 .nav-subitems .nav-item.active:before{left:-6px}
+
+
+/* Give Video Studio the full browser workspace without the site navigation. */
+.studio-active .main-area{margin-left:0}
+.studio-active .page-content{padding:0}
