@@ -4,7 +4,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
-  AudioLines, Check, Clapperboard, Copy, Download, Eye, EyeOff, FilePlus, Film,
+  ArrowLeft, AudioLines, Check, Clapperboard, Copy, Download, Eye, EyeOff, FilePlus, Film,
   Image as ImageIcon, Lock, Magnet, Maximize2, Music2, Pause, Play, Plus, Redo2,
   RotateCcw, Scissors, SkipBack, SkipForward, StepBack, StepForward, Trash2, Type,
   Undo2, Unlink, Unlock, Upload, Volume2, VolumeX, X, ZoomIn, ZoomOut, type LucideIcon,
@@ -264,7 +264,7 @@ function ExportDialog({ project, media, aspect, name, onClose }: {
 /* Studio                                                              */
 /* ------------------------------------------------------------------ */
 
-export default function VideoStudio() {
+export default function VideoStudio({ onExit }: { onExit?: () => void }) {
   const [media, setMedia] = useState<Media[]>([]);
   const [project, setProject] = useState<Project>(() => ({ tracks: defaultTracks(), clips: [] }));
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -896,6 +896,7 @@ export default function VideoStudio() {
       <input ref={fileRef} type="file" accept="video/*,audio/*,image/*,.mkv,.mov,.m4v,.flac,.opus" multiple hidden onChange={onPicked} />
 
       <header className="vs-head">
+        {onExit && <button className="vs-secondary vs-back" onClick={onExit} title="Return to MediaPark"><ArrowLeft size={15} /> Back</button>}
         <div className="vs-head-title">
           <span className="vs-head-icon"><Clapperboard size={18} /></span>
           <div className="vs-head-text">
@@ -916,12 +917,12 @@ export default function VideoStudio() {
               <button role="tab" aria-selected={panelTab === "media"} className={panelTab === "media" ? "active" : ""} onClick={() => setPanelTab("media")}><Film size={14} /> Media</button>
               <button role="tab" aria-selected={panelTab === "text"} className={panelTab === "text" ? "active" : ""} onClick={() => setPanelTab("text")}><Type size={14} /> Text</button>
             </div>
-            <button className="vs-icon-btn" onClick={() => pickFiles(false)} aria-label="Import media" title="Import video, audio or photos"><Upload size={16} /></button>
+            <button className="vs-icon-btn" onClick={() => pickFiles(true)} aria-label="Import media" title="Import video, audio or photos"><Upload size={16} /></button>
           </div>
           {panelTab === "media" ? (
             media.length === 0 ? (
               <div className="vs-bin-empty">
-                <button className="vs-dropzone" onClick={() => pickFiles(false)}>
+                <button className="vs-dropzone" onClick={() => pickFiles(true)}>
                   <Upload size={24} />
                   <b>Import your media</b>
                   <span>Video, music or photos from your device. You can also drop files here.</span>
@@ -1248,7 +1249,7 @@ export default function VideoStudio() {
           </div>
           <div className="vs-tool-group right">
             <ToolButton icon={Type} label="Add text" onClick={() => addTitle(titlePresets[0])} />
-            <ToolButton icon={ImageIcon} label="Import" onClick={() => pickFiles(false)} />
+            <ToolButton icon={ImageIcon} label="Import" onClick={() => pickFiles(true)} />
           </div>
         </div>
       </div>
