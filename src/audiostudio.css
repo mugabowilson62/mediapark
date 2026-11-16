@@ -1,0 +1,90 @@
+/* Audio studio: multitrack mixer, effects and export (shares tokens with the video studio) */
+.as{min-height:0}
+.as-main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 308px;gap:10px}
+.as-workspace{min-height:0;min-width:0}
+.as-scroll{flex:1 1 auto;min-height:0;height:auto}
+.as-side{min-height:0}
+.as-side > .vs-fields{flex:1;min-height:0;overflow:auto}
+
+/* Output meter */
+.as-meter{display:grid;gap:3px;width:96px}
+.as-meter span{display:block;height:6px;border-radius:99px;background:rgba(0,0,0,.45);overflow:hidden}
+.as-meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#63d39a 0 70%,#e7b86a 70% 88%,#ff6f5a 88%);transition:width .05s linear}
+
+/* Transport record button */
+.as-rec{display:inline-flex;align-items:center;gap:7px;height:36px;margin-left:8px;padding:0 14px;border:1px solid rgba(255,111,90,.5);border-radius:18px;background:rgba(255,111,90,.1);color:#ffb3a4;font-size:12px;font-weight:700}
+.as-rec:hover{background:rgba(255,111,90,.2)}
+.as-rec.on{background:#d8412e;border-color:#ff8a76;color:#fff;animation:as-pulse 1.2s ease-in-out infinite}
+@keyframes as-pulse{50%{box-shadow:0 0 0 6px rgba(216,65,46,.25)}}
+
+/* Track headers (mixer strip) */
+.as-labels{background:var(--vs-panel)}
+.as-track{display:flex;flex-direction:column;justify-content:space-between;padding:8px 10px 8px 9px;border-bottom:1px solid var(--vs-line);border-left:3px solid var(--c);cursor:pointer}
+.as-track:hover{background:rgba(255,255,255,.03)}
+.as-track.selected{background:rgba(255,255,255,.06)}
+.as-track.silent .as-track-name{opacity:.45}
+.as-track-top{display:flex;align-items:center;gap:4px}
+.as-dot{width:9px;height:9px;flex-shrink:0;border-radius:50%;background:var(--c)}
+.as-track-name{flex:1;min-width:0;padding:3px 5px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--vs-text);font:700 12px "DM Sans",sans-serif}
+.as-track-name:hover{border-color:var(--vs-line)}
+.as-track-name:focus{outline:none;border-color:var(--vs-accent-2);background:rgba(0,0,0,.35)}
+.as-ms{width:24px;height:24px;flex-shrink:0;display:grid;place-items:center;border:1px solid var(--vs-line);border-radius:6px;background:transparent;color:var(--vs-mute)}
+.as-ms:hover{color:var(--vs-text);border-color:var(--vs-line-strong)}
+.as-ms.on.mute{background:#7a2f22;border-color:#ff9a7a;color:#fff}
+.as-ms.on.solo{background:#c9a23a;border-color:#e7b86a;color:#1d1304}
+.as-mix{display:grid;grid-template-columns:24px 1fr 32px;align-items:center;gap:6px;color:var(--vs-mute);font-size:10.5px;font-weight:600}
+.as-mix input{width:100%;height:14px;margin:0;accent-color:var(--c)}
+.as-mix output{text-align:right;color:var(--vs-text);font-variant-numeric:tabular-nums}
+
+.as-lane.selected{background:rgba(255,255,255,.035)}
+.as-lane.off{opacity:.5}
+.vs-lane.as-lane:nth-child(even){background:rgba(255,255,255,.018)}
+.vs-lane.as-lane.selected:nth-child(even){background:rgba(255,255,255,.035)}
+
+/* Clips */
+.as-clip{background:color-mix(in srgb,var(--c) 20%,#0a1b11);border-color:color-mix(in srgb,var(--c) 75%,#0a1b11)}
+.as-clip.selected{border-color:var(--vs-accent)}
+.as-clip .vs-clip-label{top:3px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+.as-wave{position:absolute;left:0;top:16px;width:100%;height:calc(100% - 18px);fill:var(--c);opacity:.9;pointer-events:none}
+.as-fade{position:absolute;top:0;height:100%;fill:rgba(4,13,8,.62);pointer-events:none}
+.as-fade-handle{position:absolute;top:4px;z-index:6;width:12px;height:12px;margin-left:-6px;border-radius:50%;border:2px solid var(--c);background:#fff;cursor:ew-resize;box-shadow:0 1px 4px rgba(0,0,0,.5);opacity:.75;touch-action:none}
+.as-clip:hover .as-fade-handle,.as-clip.selected .as-fade-handle{opacity:1}
+
+.as-welcome{position:absolute;left:28px;top:50%;transform:translateY(-50%);z-index:3;display:grid;gap:9px;max-width:420px;pointer-events:none}
+.as-welcome b{font:800 18px Manrope,sans-serif}
+.as-welcome span{color:var(--vs-mute);font-size:12px;line-height:1.6}
+.as-welcome-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;pointer-events:auto}
+.as-toolbar{flex:0 0 auto}
+
+/* Effects panel */
+.as-fx{gap:12px}
+.as-fx-target{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--vs-line);border-left:3px solid var(--c);border-radius:9px;background:rgba(0,0,0,.2);font-size:12px}
+.as-fx-target small{margin-left:auto;color:#ffb09a;font-size:10.5px}
+.as-group{display:grid;gap:11px;padding:12px;border:1px solid var(--vs-line);border-radius:11px;background:rgba(255,255,255,.02)}
+.as-group header{display:flex;align-items:center;justify-content:space-between}
+.as-group h4{margin:0;font:800 12px Manrope,sans-serif;letter-spacing:.2px}
+.as-group header button{padding:3px 9px;border:1px solid var(--vs-line-strong);border-radius:6px;background:transparent;color:var(--vs-mute);font-size:10.5px;font-weight:700}
+.as-group header button:hover{color:var(--vs-text);border-color:var(--vs-accent)}
+.as-slider{gap:5px}
+
+/* Export dialog */
+.as-dialog{width:min(480px,100%)}
+.as-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.as-two:has(> .vs-field:only-child){grid-template-columns:1fr}
+.as-check{display:flex;align-items:center;gap:9px;color:var(--vs-text);font-size:12px}
+.as-check input{width:16px;height:16px;accent-color:#8fe0a4}
+.as-meta{display:grid;gap:11px;margin:0;padding:13px;border:1px solid var(--vs-line-strong);border-radius:11px}
+.as-meta legend{padding:0 7px;color:var(--vs-accent);font-size:11px;font-weight:800}
+.as-note{color:var(--vs-mute);font-size:11px;font-weight:500;line-height:1.5}
+.as-note.warn{color:#ffb09a}
+.as-result{width:100%}
+.vs-progress.busy span{animation:as-busy 1.2s ease-in-out infinite alternate}
+@keyframes as-busy{from{margin-left:0}to{margin-left:65%}}
+.vs-segment button:disabled{opacity:.35;cursor:not-allowed}
+
+@media(max-width:1180px){.as-main{grid-template-columns:minmax(0,1fr)}.as-side{max-height:360px}.as-workspace{min-height:480px}}
+@media(max-width:900px){.vs.as{height:auto}.as-meter{display:none}}
+@media(max-width:760px){.as-rec span{display:none}.as-rec{padding:0 11px}}
+.as-slider{display:grid;grid-template-columns:1fr auto;align-items:center;row-gap:6px}
+.as-slider output{float:none;grid-column:2;grid-row:1}
+.as-slider input[type=range]{grid-column:1/-1}

@@ -275,38 +275,24 @@
 @media(max-width:900px){.vs-save{display:none}}
 @media(max-width:760px){.vs-head-title{flex-basis:100%}.vs-secondary,.vs-export{margin-left:0}}
 
-
-/* ---- Fixed desktop editing workspace (preserves the full editor engine) ---- */
-@media (min-width: 1181px) {
-  .main-area:has(.vs) {
-    height: 100vh;
-    overflow: hidden;
-  }
-
-  .page-content:has(.vs) {
-    width: 100%;
-    max-width: none;
-    height: calc(100vh - 76px);
-    display: flex;
-    flex-direction: column;
-    padding: 16px 20px 12px;
-    overflow: hidden;
-  }
-
-  .page-content:has(.vs) > .vs {
-    flex: 1 1 auto;
-    width: 100%;
-    height: auto;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .vs-main {
-    grid-template-columns: minmax(240px, 24%) minmax(0, 1fr) minmax(220px, 20%);
-    min-height: 0;
-  }
-
-  .vs-bottom {
-    flex: 0 0 auto;
-  }
+/* ---- Fit the whole workspace to one screen (desktop) ---- */
+.vs-tl-scroll{max-height:clamp(130px,32vh,300px)}
+.vs.as .vs-tl-scroll{max-height:none}
+@media(min-width:901px){
+  .app-shell.studio-active{height:100vh;min-height:0;overflow:hidden}
+  .main-area.studio-mode{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+  .studio-mode .topbar{position:relative;flex:0 0 auto;height:58px}
+  .studio-mode .page-content.studio-page{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;width:100%;max-width:none;margin:0;padding:12px 18px 14px;overflow:hidden}
+  .studio-mode .notice-banner,.studio-mode .search-result-note{flex:0 0 auto;margin-bottom:10px}
+  .studio-page > .vs{flex:1 1 auto;height:auto;min-height:0}
+  .vs-head{flex:0 0 auto;min-height:44px}
+  .vs-main{min-height:0}
+  .vs-bottom{flex:0 0 auto}
+}
+@media(min-width:901px) and (max-height:760px){
+  .vs{gap:8px}
+  .vs-head-icon{width:32px;height:32px}
+  .vs-transport{padding:5px 12px}
+  .vs-tool{padding:4px 8px}
+  .vs-tool span{font-size:10px}
 }

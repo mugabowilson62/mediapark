@@ -18,7 +18,7 @@ import {
   newClip, placeClip, readMedia, seconds1, shortTime, timecode, uid,
 } from "./studio/utils";
 import { clearAll, deleteMedia, loadAll, saveMedia, saveProject } from "./studio/storage";
-import { exportSupported, exportVideo, frameSize } from "./studio/exporter";
+import { availableFormats, exportSupported, exportVideo, frameSize } from "./studio/exporter";
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                           */
@@ -158,6 +158,8 @@ function ExportDialog({ project, media, aspect, name, onClose }: {
   project: Project; media: Map<string, Media>; aspect: Aspect; name: string; onClose: () => void;
 }) {
   const [resolution, setResolution] = useState(720);
+  const formats = useMemo(() => availableFormats(), []);
+  const [format, setFormat] = useState<"mp4" | "webm">(formats[0] ?? "webm");
   const [phase, setPhase] = useState<"idle" | "rendering" | "done" | "error">("idle");
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState("");
@@ -193,7 +195,7 @@ function ExportDialog({ project, media, aspect, name, onClose }: {
     setPhase("rendering");
     setProgress(0);
     try {
-      const output = await exportVideo({ project, media, aspect, resolution, fps: 30, signal: controller.signal, onProgress: setProgress });
+      const output = await exportVideo({ project, media, aspect, resolution, fps: 30, format, signal: controller.signal, onProgress: setProgress });
       if (output.blob.size === 0) throw new Error("The recording came out empty. Try again.");
       const url = URL.createObjectURL(output.blob);
       urlRef.current = url;
@@ -224,6 +226,13 @@ function ExportDialog({ project, media, aspect, name, onClose }: {
                 ))}
               </div>
             </div>
+            {formats.length > 1 && (
+              <div className="vs-field">File type
+                <div className="vs-segment">
+                  {formats.map((f) => <button key={f} className={format === f ? "active" : ""} onClick={() => setFormat(f)}>.{f}</button>)}
+                </div>
+              </div>
+            )}
             <dl className="vs-readout">
               <div><dt>Size</dt><dd>{dims.width} × {dims.height}</dd></div>
               <div><dt>Length</dt><dd>{shortTime(length)}</dd></div>
@@ -1127,7 +1136,7 @@ export default function VideoStudio() {
           </div>
         </div>
 
-        <div className="vs-tl-scroll" ref={scrollRef} style={{ height: Math.min(scrollHeight, 252) }}>
+        <div className="vs-tl-scroll" ref={scrollRef} style={{ height: scrollHeight }}>
           <div className="vs-tl-inner" style={{ width: LABEL_W + lanesWidth }}>
             <div className="vs-ruler-row" style={{ height: RULER_H }}>
               <div className="vs-ruler-spacer" style={{ width: LABEL_W }} />

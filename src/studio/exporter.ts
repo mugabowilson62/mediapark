@@ -8,6 +8,8 @@ export type ExportOptions = {
   /** Length of the shorter side in pixels. */
   resolution: number;
   fps: number;
+  /** Preferred container. Falls back to whatever this browser can record. */
+  format?: "mp4" | "webm";
   signal: AbortSignal;
   onProgress: (fraction: number) => void;
 };
@@ -30,6 +32,14 @@ const MIME_CANDIDATES: Array<{ mime: string; extension: string }> = [
   { mime: "video/webm;codecs=vp8,opus", extension: "webm" },
   { mime: "video/webm", extension: "webm" },
 ];
+
+/** Containers this browser can record to, best first. */
+export function availableFormats(): Array<"mp4" | "webm"> {
+  if (typeof MediaRecorder === "undefined") return [];
+  const found = new Set<"mp4" | "webm">();
+  for (const c of MIME_CANDIDATES) if (MediaRecorder.isTypeSupported(c.mime)) found.add(c.extension as "mp4" | "webm");
+  return Array.from(found);
+}
 
 export function exportSupported(): boolean {
   return typeof MediaRecorder !== "undefined" && typeof HTMLCanvasElement !== "undefined" && "captureStream" in HTMLCanvasElement.prototype;
@@ -218,7 +228,7 @@ export async function fixWebmDuration(blob: Blob, seconds: number): Promise<Blob
 
 /** Renders the timeline to a video file in real time by recording a canvas and the mixed audio. */
 export async function exportVideo(options: ExportOptions): Promise<ExportResult> {
-  const { project, media, aspect, resolution, fps, signal, onProgress } = options;
+  const { project, media, aspect, resolution, fps, format, signal, onProgress } = options;
   if (!exportSupported()) throw new Error("This browser cannot record video. Try Chrome, Edge, Firefox or Safari 14.1 or newer.");
   const total = project.clips.reduce((end, c) => Math.max(end, c.start + c.duration), 0);
   if (total <= 0) throw new Error("The timeline is empty. Add a clip first.");
@@ -288,7 +298,7 @@ export async function exportVideo(options: ExportOptions): Promise<ExportResult>
     if (signal.aborted) throw new DOMException("Export cancelled", "AbortError");
 
     const stream = new MediaStream([...canvas.captureStream(fps).getVideoTracks(), ...destination.stream.getAudioTracks()]);
-    const chosen = MIME_CANDIDATES.find((c) => MediaRecorder.isTypeSupported(c.mime)) ?? { mime: "", extension: "webm" };
+    const chosen = MIME_CANDIDATES.find((c) => (!format || c.extension === format) && MediaRecorder.isTypeSupported(c.mime)) ?? MIME_CANDIDATES.find((c) => MediaRecorder.isTypeSupported(c.mime)) ?? { mime: "", extension: "webm" };
     const bitrate = Math.round(clamp(resolution, 360, 1080) * resolution * 4.2);
     const recorder = new MediaRecorder(stream, { ...(chosen.mime ? { mimeType: chosen.mime } : {}), videoBitsPerSecond: bitrate, audioBitsPerSecond: 160000 });
     const chunks: Blob[] = [];
