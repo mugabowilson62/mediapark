@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import VideoStudio from "./VideoStudio";
 import AudioStudio from "./AudioStudio";
+import AuthScreen from "./AuthScreen";
+import { useAuth } from "./AuthContext";
 
 type Feature = {
   title: string;
@@ -48,6 +50,7 @@ function readStoredList(key: string): string[] {
 }
 
 function App() {
+  const { session, loading: authLoading, signOut } = useAuth();
   const [activeNav, setActiveNav] = useState("Home");
   const [expandedGroups, setExpandedGroups] = useState<string[]>(["EXPLORE"]);
   const [search, setSearch] = useState("");
@@ -96,6 +99,9 @@ function App() {
     window.addEventListener("keydown", handleKeyboardShortcut);
     return () => window.removeEventListener("keydown", handleKeyboardShortcut);
   }, []);
+
+  if (authLoading) return <div className="auth-loading">Preparing your MediaPark workspace…</div>;
+  if (!session) return <AuthScreen />;
 
   const showNotice = (name: string) => {
     setNotice(name + " is part of the Mediapark plan. This is the first frontend preview; its service will be connected in a later step.");
@@ -165,7 +171,7 @@ function App() {
       })}
       <div className="sidebar-bottom">
         <div className="upgrade-card"><span className="wildlife-decoration upgrade-wildlife" aria-hidden="true">🦒 🦓</span><div className="upgrade-icon"><Sparkles size={17} /></div><strong>Your ideas, amplified.</strong><p>Your creative space is just getting started.</p><button onClick={() => showNotice("Creator account")}>Explore creator tools <ChevronRight size={15} /></button></div>
-        <button className="profile-row" onClick={() => showNotice("Profile and account")}><div className="avatar avatar-me">W</div><span><b>Wilson</b><small>Creator account</small></span><ChevronDown size={16} /></button>
+        <button className="profile-row" onClick={() => { void signOut().catch((error) => setNotice(error instanceof Error ? error.message : "Could not sign out.")); }} title="Sign out of MediaPark"><div className="avatar avatar-me">{(session.user.email?.[0] ?? "U").toUpperCase()}</div><span><b>{session.user.email ?? "Your account"}</b><small>Sign out</small></span><ChevronDown size={16} /></button>
       </div>
     </aside>
   );
