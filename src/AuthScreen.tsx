@@ -2,6 +2,10 @@ import { useState, type FormEvent } from "react";
 import { AudioLines, ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Sparkles } from "lucide-react";
 import { supabase } from "./lib/supabase";
 
+// Always send confirmation links to the deployed MediaPark site.
+// The Supabase Auth URL allowlist must also include this exact origin.
+const MEDIAPARK_SITE_URL = "https://mediapark.onrender.com";
+
 export default function AuthScreen() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -21,7 +25,7 @@ export default function AuthScreen() {
         const { data, error: authError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: MEDIAPARK_SITE_URL },
         });
         if (authError) throw authError;
         if (!data.session) {
